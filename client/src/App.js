@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
-import LoginScreen from './components/LoginScreen';
+import LandingPage from './components/LandingPage';
+import ChatSetup from './components/ChatSetup';
 import ChatScreen from './components/ChatScreen';
 import WaitingScreen from './components/WaitingScreen';
 
@@ -11,7 +12,7 @@ const SERVER_URL = process.env.REACT_APP_SERVER_URL || (window.location.hostname
 function App() {
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [status, setStatus] = useState('login'); // 'login', 'waiting', 'chatting', 'disconnected'
+  const [status, setStatus] = useState('landing'); // 'landing', 'setup', 'waiting', 'chatting', 'disconnected'
   const [userData, setUserData] = useState(null);
   const [partner, setPartner] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -141,9 +142,13 @@ function App() {
     }
   };
 
+  const handleProceed = () => {
+    setStatus('setup');
+  };
+
   return (
     <div className="App">
-      {!isConnected && status !== 'login' && (
+      {!isConnected && status !== 'landing' && status !== 'setup' && (
         <div style={{
           background: '#ff4757',
           color: 'white',
@@ -155,16 +160,14 @@ function App() {
         </div>
       )}
       
-      {status === 'login' && (
-        <LoginScreen onLogin={handleLogin} />
+      {status === 'landing' && (
+        <LandingPage onProceed={handleProceed} />
       )}
       
-      {status === 'waiting' && (
-        <WaitingScreen userData={userData} />
-      )}
-      
-      {(status === 'chatting' || status === 'disconnected') && (
-        <ChatScreen
+      {status === 'setup' && (
+        <ChatSetup 
+          onLogin={handleLogin}
+          status={status}
           userData={userData}
           partner={partner}
           messages={messages}
@@ -174,7 +177,22 @@ function App() {
           onTyping={handleTyping}
           onSkip={handleSkip}
           onStop={handleStop}
-          onReconnect={handleReconnect}
+        />
+      )}
+      
+      {(status === 'waiting' || status === 'chatting' || status === 'disconnected') && (
+        <ChatSetup 
+          onLogin={handleLogin}
+          status={status}
+          userData={userData}
+          partner={partner}
+          messages={messages}
+          isTyping={isTyping}
+          isDisconnected={status === 'disconnected'}
+          onSendMessage={handleSendMessage}
+          onTyping={handleTyping}
+          onSkip={handleSkip}
+          onStop={handleStop}
         />
       )}
     </div>
