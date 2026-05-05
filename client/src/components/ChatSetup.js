@@ -162,6 +162,20 @@ function ChatSetup({
           ) : (
             // Active chat
             <>
+              {/* Disconnected Banner */}
+              {isDisconnected && (
+                <div style={{
+                  background: '#ffebee',
+                  border: '1px solid #ef5350',
+                  padding: '12px 20px',
+                  textAlign: 'center',
+                  color: '#c62828',
+                  fontSize: '0.9rem'
+                }}>
+                  Your partner has left the chat
+                </div>
+              )}
+
               {/* Chat Header */}
               <div style={{
                 padding: '16px 20px',
@@ -171,11 +185,17 @@ function ChatSetup({
                 alignItems: 'center'
               }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1rem', color: '#333' }}>
-                    {partner ? `Chatting with ${partner.nickname}` : 'Finding a match...'}
+                  <h3 style={{ margin: 0, fontSize: '1rem', color: isDisconnected ? '#999' : '#333' }}>
+                    {isDisconnected 
+                      ? 'Partner disconnected' 
+                      : (partner ? `Chatting with ${partner.nickname}` : 'Finding a match...')
+                    }
                   </h3>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: '#666' }}>
-                    {partner ? `${partner.college} • ${partner.course}` : 'Please wait...'}
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: isDisconnected ? '#bbb' : '#666' }}>
+                    {isDisconnected 
+                      ? 'Start a new chat to find someone else'
+                      : (partner ? `${partner.college} • ${partner.course}` : 'Please wait...')
+                    }
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -341,14 +361,14 @@ function ChatSetup({
                 placeholder="Enter your college name"
                 value={college}
                 onChange={(e) => setCollege(e.target.value)}
-                disabled={showChatArea}
+                disabled={canChat}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
                   border: '1px solid #ddd',
                   borderRadius: '6px',
                   fontSize: '0.9rem',
-                  background: showChatArea ? '#f5f5f5' : 'white'
+                  background: canChat ? '#f5f5f5' : 'white'
                 }}
               />
             </div>
@@ -362,14 +382,14 @@ function ChatSetup({
                 placeholder="e.g., Computer Science, Engineering"
                 value={course}
                 onChange={(e) => setCourse(e.target.value)}
-                disabled={showChatArea}
+                disabled={canChat}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
                   border: '1px solid #ddd',
                   borderRadius: '6px',
                   fontSize: '0.9rem',
-                  background: showChatArea ? '#f5f5f5' : 'white'
+                  background: canChat ? '#f5f5f5' : 'white'
                 }}
               />
             </div>
@@ -383,14 +403,14 @@ function ChatSetup({
                 placeholder="e.g., gaming, music, coding"
                 value={interests}
                 onChange={(e) => setInterests(e.target.value)}
-                disabled={showChatArea}
+                disabled={canChat}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
                   border: '1px solid #ddd',
                   borderRadius: '6px',
                   fontSize: '0.9rem',
-                  background: showChatArea ? '#f5f5f5' : 'white'
+                  background: canChat ? '#f5f5f5' : 'white'
                 }}
               />
             </div>
@@ -401,13 +421,13 @@ function ChatSetup({
               fontSize: '0.85rem',
               color: '#666',
               marginBottom: '16px',
-              cursor: showChatArea ? 'default' : 'pointer'
+              cursor: canChat ? 'default' : 'pointer'
             }}>
               <input
                 type="checkbox"
                 checked={matchSimilar}
                 onChange={(e) => setMatchSimilar(e.target.checked)}
-                disabled={showChatArea}
+                disabled={canChat}
                 style={{ marginRight: '8px' }}
               />
               Match with similar interests
@@ -441,6 +461,17 @@ function ChatSetup({
                   color: '#e65100'
                 }}>
                   Searching for match...
+                </div>
+              ) : status === 'disconnected' ? (
+                <div style={{
+                  padding: '12px',
+                  background: '#ffebee',
+                  borderRadius: '6px',
+                  textAlign: 'center',
+                  fontSize: '0.9rem',
+                  color: '#c62828'
+                }}>
+                  Partner left - Start new chat
                 </div>
               ) : (
                 <div style={{
