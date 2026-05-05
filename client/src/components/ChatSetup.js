@@ -73,7 +73,8 @@ function ChatSetup({
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const showChat = status === 'waiting' || status === 'chatting' || status === 'disconnected';
+  const showChatArea = status === 'waiting' || status === 'chatting' || status === 'disconnected';
+  const canChat = status === 'chatting' || status === 'disconnected';
 
   return (
     <div style={{
@@ -111,7 +112,7 @@ function ChatSetup({
           flexDirection: 'column',
           overflow: 'hidden'
         }}>
-          {!showChat ? (
+          {!showChatArea ? (
             // Placeholder when not chatting
             <div style={{
               flex: 1,
@@ -127,6 +128,33 @@ function ChatSetup({
               </p>
               <p style={{ color: '#999', fontSize: '0.85rem' }}>
                 Your identity is completely anonymous.
+              </p>
+            </div>
+          ) : status === 'waiting' ? (
+            // Waiting for match
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              padding: '40px'
+            }}>
+              <div style={{
+                width: '60px',
+                height: '60px',
+                border: '4px solid #e0e0e0',
+                borderTopColor: '#17a2b8',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                marginBottom: '24px'
+              }}></div>
+              <h3 style={{ color: '#333', fontSize: '1.2rem', marginBottom: '8px' }}>
+                Looking for someone...
+              </h3>
+              <p style={{ color: '#666', fontSize: '0.9rem' }}>
+                Finding a match based on your preferences
               </p>
             </div>
           ) : (
@@ -244,43 +272,45 @@ function ChatSetup({
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Input Area */}
-              <form onSubmit={handleSend} style={{
-                padding: '16px 20px',
-                borderTop: '1px solid #e0e0e0',
-                display: 'flex',
-                gap: '12px'
-              }}>
-                <input
-                  type="text"
-                  placeholder={isDisconnected ? "Partner disconnected..." : "Type a message..."}
-                  value={inputText}
-                  onChange={handleInputChange}
-                  disabled={isDisconnected}
-                  style={{
-                    flex: 1,
-                    padding: '12px 16px',
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    fontSize: '0.95rem'
-                  }}
-                />
-                <button
-                  type="submit"
-                  disabled={!inputText.trim() || isDisconnected}
-                  style={{
-                    padding: '12px 24px',
-                    background: (!inputText.trim() || isDisconnected) ? '#ccc' : '#17a2b8',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontWeight: 600,
-                    cursor: (!inputText.trim() || isDisconnected) ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  Send
-                </button>
-              </form>
+              {/* Input Area - only show when actually chatting */}
+              {canChat && (
+                <form onSubmit={handleSend} style={{
+                  padding: '16px 20px',
+                  borderTop: '1px solid #e0e0e0',
+                  display: 'flex',
+                  gap: '12px'
+                }}>
+                  <input
+                    type="text"
+                    placeholder={isDisconnected ? "Partner disconnected..." : "Type a message..."}
+                    value={inputText}
+                    onChange={handleInputChange}
+                    disabled={isDisconnected}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      border: '1px solid #ddd',
+                      borderRadius: '8px',
+                      fontSize: '0.95rem'
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!inputText.trim() || isDisconnected}
+                    style={{
+                      padding: '12px 24px',
+                      background: (!inputText.trim() || isDisconnected) ? '#ccc' : '#17a2b8',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontWeight: 600,
+                      cursor: (!inputText.trim() || isDisconnected) ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    Send
+                  </button>
+                </form>
+              )}
             </>
           )}
         </div>
@@ -309,14 +339,14 @@ function ChatSetup({
                 placeholder="Enter your college name"
                 value={college}
                 onChange={(e) => setCollege(e.target.value)}
-                disabled={showChat}
+                disabled={showChatArea}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
                   border: '1px solid #ddd',
                   borderRadius: '6px',
                   fontSize: '0.9rem',
-                  background: showChat ? '#f5f5f5' : 'white'
+                  background: showChatArea ? '#f5f5f5' : 'white'
                 }}
               />
             </div>
@@ -330,14 +360,14 @@ function ChatSetup({
                 placeholder="e.g., Computer Science, Engineering"
                 value={course}
                 onChange={(e) => setCourse(e.target.value)}
-                disabled={showChat}
+                disabled={showChatArea}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
                   border: '1px solid #ddd',
                   borderRadius: '6px',
                   fontSize: '0.9rem',
-                  background: showChat ? '#f5f5f5' : 'white'
+                  background: showChatArea ? '#f5f5f5' : 'white'
                 }}
               />
             </div>
@@ -351,14 +381,14 @@ function ChatSetup({
                 placeholder="e.g., gaming, music, coding"
                 value={interests}
                 onChange={(e) => setInterests(e.target.value)}
-                disabled={showChat}
+                disabled={showChatArea}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
                   border: '1px solid #ddd',
                   borderRadius: '6px',
                   fontSize: '0.9rem',
-                  background: showChat ? '#f5f5f5' : 'white'
+                  background: showChatArea ? '#f5f5f5' : 'white'
                 }}
               />
             </div>
@@ -369,19 +399,19 @@ function ChatSetup({
               fontSize: '0.85rem',
               color: '#666',
               marginBottom: '16px',
-              cursor: showChat ? 'default' : 'pointer'
+              cursor: showChatArea ? 'default' : 'pointer'
             }}>
               <input
                 type="checkbox"
                 checked={matchSimilar}
                 onChange={(e) => setMatchSimilar(e.target.checked)}
-                disabled={showChat}
+                disabled={showChatArea}
                 style={{ marginRight: '8px' }}
               />
               Match with similar interests
             </label>
 
-            {!showChat ? (
+            {!showChatArea ? (
               <button 
                 onClick={handleStart}
                 style={{
@@ -399,16 +429,29 @@ function ChatSetup({
                 Start Chat
               </button>
             ) : (
-              <div style={{
-                padding: '12px',
-                background: '#e8f5e9',
-                borderRadius: '6px',
-                textAlign: 'center',
-                fontSize: '0.9rem',
-                color: '#2e7d32'
-              }}>
-                Chat active!
-              </div>
+              status === 'waiting' ? (
+                <div style={{
+                  padding: '12px',
+                  background: '#fff3e0',
+                  borderRadius: '6px',
+                  textAlign: 'center',
+                  fontSize: '0.9rem',
+                  color: '#e65100'
+                }}>
+                  Searching for match...
+                </div>
+              ) : (
+                <div style={{
+                  padding: '12px',
+                  background: '#e8f5e9',
+                  borderRadius: '6px',
+                  textAlign: 'center',
+                  fontSize: '0.9rem',
+                  color: '#2e7d32'
+                }}>
+                  Chat active!
+                </div>
+              )
             )}
           </div>
 
