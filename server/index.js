@@ -26,71 +26,72 @@ const io = new Server(server, {
 });
 
 // Store waiting users and active chats
-const waitingUsers = [];
+const waitingUsers = [];  
 const activeChats = new Map();
 const userSockets = new Map();
 
 // Calculate match score between two users
+// College/course are just INFO - matching is based on interests (optional) or random
 function calculateMatchScore(user1, user2) {
   let score = 0;
   
-  // Same college = highest priority
-  if (user1.college === user2.college) {
-    score += 100;
+  // If both users want similar interests and have interests, prioritize interest matching
+  if (user1.matchSimilar && user2.matchSimilar && user1.interests && user2.interests) {
+    const interests1 = user1.interests.split(',').map(i => i.trim().toLowerCase()).filter(i => i);
+    const interests2 = user2.interests.split(',').map(i => i.trim().toLowerCase()).filter(i => i);
+    
+    // Count matching interests
+    const commonInterests = interests1.filter(i => interests2.includes(i));
+    if (commonInterests.length > 0) {
+      score += commonInterests.length * 100; // High score for common interests
+    }
   }
   
-  // Same course = high priority
-  if (user1.course === user2.course) {
-    score += 50;
-  }
-  
-  // Similar course category (e.g., both Engineering, both Arts)
-  const courseCategories = {
-    'engineering': ['bsce', 'bsee', 'bsme', 'bscpe', 'bsie'],
-    'it': ['bsit', 'bscs', 'bsis'],
-    'business': ['bsba', 'bsa', 'bsma'],
-    'education': ['beed', 'bsed'],
-    'arts': ['bspsych', 'bspolsci', 'bsjourn'],
-    'sciences': ['bsbio', 'bschem', 'bsmath', 'bsphysics']
-  };
-  
-  const user1Category = Object.keys(courseCategories).find(cat => 
-    courseCategories[cat].includes(user1.course.toLowerCase())
-  );
-  const user2Category = Object.keys(courseCategories).find(cat => 
-    courseCategories[cat].includes(user2.course.toLowerCase())
-  );
-  
-  if (user1Category && user2Category && user1Category === user2Category) {
-    score += 25;
-  }
+  // Base score for any match (allows matching with anyone)
+  score += 1;
   
   return score;
 }
 
 // Find best match for a user
+// Match anyone randomly, but prioritize interest matches if both want it
 function findMatch(user) {
   if (waitingUsers.length === 0) return null;
   
   let bestMatch = null;
   let bestScore = -1;
   
+  // First pass: look for interest matches if user wants similar interests
+  if (user.matchSimilar && user.interests) {
+    for (let i = 0; i < waitingUsers.length; i++) {
+      const candidate = waitingUsers[i];
+      
+      // Don't match with yourself
+      if (candidate.id === user.id) continue;
+      
+      // Calculate match score (prioritizes interests)
+      const score = calculateMatchScore(user, candidate);
+      
+      if (score > bestScore && score > 1) { // Score > 1 means interest match
+        bestScore = score;
+        bestMatch = { user: candidate, index: i, score };
+      }
+    }
+    
+    // If found interest match, return it
+    if (bestMatch) return bestMatch;
+  }
+  
+  // Second pass: match with anyone (random pick from waiting)
+  // Find first available user that's not yourself
   for (let i = 0; i < waitingUsers.length; i++) {
     const candidate = waitingUsers[i];
-    
-    // Don't match with yourself
-    if (candidate.id === user.id) continue;
-    
-    // Calculate match score
-    const score = calculateMatchScore(user, candidate);
-    
-    if (score > bestScore) {
-      bestScore = score;
-      bestMatch = { user: candidate, index: i, score };
+    if (candidate.id !== user.id) {
+      return { user: candidate, index: i, score: 1 };
     }
   }
   
-  return bestMatch;
+  return null;
 }
 
 io.on('connection', (socket) => {
@@ -103,6 +104,8 @@ io.on('connection', (socket) => {
       nickname: userData.nickname,
       course: userData.course.toLowerCase(),
       college: userData.college.toLowerCase(),
+      interests: userData.interests ? userData.interests.toLowerCase() : '',
+      matchSimilar: userData.matchSimilar || false,
       socket: socket
     };
     
@@ -133,6 +136,14 @@ io.on('connection', (socket) => {
       activeChats.set(socket.id, chatInfo);
       activeChats.set(partner.id, chatInfo);
       
+      // Calculate common interests for display
+      let commonInterests = [];
+      if (user.interests && partner.interests) {
+        const userInterests = user.interests.split(',').map(i => i.trim()).filter(i => i);
+        const partnerInterests = partner.interests.split(',').map(i => i.trim()).filter(i => i);
+        commonInterests = userInterests.filter(i => partnerInterests.includes(i));
+      }
+      
       // Notify both users
       socket.emit('matched', {
         roomId,
@@ -141,6 +152,7 @@ io.on('connection', (socket) => {
           course: partner.course,
           college: partner.college
         },
+        commonInterests: commonInterests,
         matchScore: match.score
       });
       
@@ -151,10 +163,11 @@ io.on('connection', (socket) => {
           course: user.course,
           college: user.college
         },
+        commonInterests: commonInterests,
         matchScore: match.score
       });
       
-      console.log(`Matched: ${user.nickname} (${user.course}) with ${partner.nickname} (${partner.course}) - Score: ${match.score}`);
+      console.log(`Matched: ${user.nickname} (${user.course}) with ${partner.nickname} (${partner.course}) - Score: ${match.score}${commonInterests.length > 0 ? ` - Common: ${commonInterests.join(', ')}` : ''}`);
     } else {
       // No match found, add to waiting pool
       waitingUsers.push(user);

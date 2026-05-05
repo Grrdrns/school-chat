@@ -33,8 +33,10 @@ function ChatSetup({
     
     onLogin({
       nickname: randomName,
-      course: course.trim() || interests.trim() || 'general',
-      college: college.trim() || 'buksu'
+      course: course.trim() || 'general',
+      college: college.trim() || 'buksu',
+      interests: interests.trim(),
+      matchSimilar: matchSimilar
     });
   };
 

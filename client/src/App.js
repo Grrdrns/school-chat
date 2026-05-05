@@ -42,9 +42,16 @@ function App() {
     newSocket.on('matched', (data) => {
       setPartner(data.partner);
       setStatus('chatting');
+      
+      // Build match message
+      let matchText = `You matched with ${data.partner.nickname} from ${data.partner.college}! (${data.partner.course})`;
+      if (data.commonInterests && data.commonInterests.length > 0) {
+        matchText += `\nYou both like: ${data.commonInterests.join(', ')}`;
+      }
+      
       setMessages([
         {
-          text: `You matched with ${data.partner.nickname} from ${data.partner.college}! (${data.partner.course})`,
+          text: matchText,
           sender: 'System',
           isSystem: true,
           timestamp: Date.now()
