@@ -1,0 +1,184 @@
+import React, { useState, useEffect, useRef } from 'react';
+import io from 'socket.io-client';
+import LoginScreen from './components/LoginScreen';
+import ChatScreen from './components/ChatScreen';
+import WaitingScreen from './components/WaitingScreen';
+
+const SERVER_URL = process.env.REACT_APP_SERVER_URL || window.location.hostname === 'localhost' 
+  ? 'http://localhost:5000' 
+  : 'https://school-chat-server-production.up.railway.app'; // Update this with your deployed server URL
+
+function App() {
+  const [socket, setSocket] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [status, setStatus] = useState('login'); // 'login', 'waiting', 'chatting', 'disconnected'
+  const [userData, setUserData] = useState(null);
+  const [partner, setPartner] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [isTyping, setIsTyping] = useState(false);
+
+  // Initialize socket connection
+  useEffect(() => {
+    const newSocket = io(SERVER_URL);
+    setSocket(newSocket);
+
+    newSocket.on('connect', () => {
+      setIsConnected(true);
+      console.log('Connected to server');
+    });
+
+    newSocket.on('disconnect', () => {
+      setIsConnected(false);
+      setStatus('disconnected');
+      console.log('Disconnected from server');
+    });
+
+    newSocket.on('waiting', () => {
+      setStatus('waiting');
+      setMessages([]);
+    });
+
+    newSocket.on('matched', (data) => {
+      setPartner(data.partner);
+      setStatus('chatting');
+      setMessages([
+        {
+          text: `You matched with ${data.partner.nickname} from ${data.partner.college}! (${data.partner.course})`,
+          sender: 'System',
+          isSystem: true,
+          timestamp: Date.now()
+        }
+      ]);
+    });
+
+    newSocket.on('message', (data) => {
+      setMessages(prev => [...prev, {
+        text: data.text,
+        sender: data.sender,
+        isOwn: false,
+        timestamp: data.timestamp
+      }]);
+      setIsTyping(false);
+    });
+
+    newSocket.on('typing', (typing) => {
+      setIsTyping(typing);
+    });
+
+    newSocket.on('partnerDisconnected', () => {
+      setStatus('disconnected');
+      setMessages(prev => [...prev, {
+        text: 'Your partner has disconnected.',
+        sender: 'System',
+        isSystem: true,
+        timestamp: Date.now()
+      }]);
+      setPartner(null);
+    });
+
+    newSocket.on('skipped', () => {
+      setStatus('waiting');
+      setPartner(null);
+      setMessages([]);
+    });
+
+    return () => {
+      newSocket.close();
+    };
+  }, []);
+
+  const handleLogin = (data) => {
+    setUserData(data);
+    if (socket) {
+      socket.emit('join', data);
+    }
+  };
+
+  const handleSendMessage = (text) => {
+    if (socket && text.trim()) {
+      socket.emit('message', { text });
+      setMessages(prev => [...prev, {
+        text,
+        sender: 'You',
+        isOwn: true,
+        timestamp: Date.now()
+      }]);
+    }
+  };
+
+  const handleTyping = (isTypingNow) => {
+    if (socket) {
+      socket.emit('typing', isTypingNow);
+    }
+  };
+
+  const handleSkip = () => {
+    if (socket) {
+      socket.emit('skip');
+    }
+  };
+
+  const handleStop = () => {
+    if (socket) {
+      socket.disconnect();
+    }
+    setStatus('login');
+    setUserData(null);
+    setPartner(null);
+    setMessages([]);
+    
+    // Reconnect
+    const newSocket = io(SERVER_URL);
+    setSocket(newSocket);
+  };
+
+  const handleReconnect = () => {
+    if (socket) {
+      socket.connect();
+      if (userData) {
+        socket.emit('join', userData);
+      }
+    }
+  };
+
+  return (
+    <div className="App">
+      {!isConnected && status !== 'login' && (
+        <div style={{
+          background: '#ff4757',
+          color: 'white',
+          textAlign: 'center',
+          padding: '10px',
+          fontSize: '0.9rem'
+        }}>
+          Disconnected from server. Trying to reconnect...
+        </div>
+      )}
+      
+      {status === 'login' && (
+        <LoginScreen onLogin={handleLogin} />
+      )}
+      
+      {status === 'waiting' && (
+        <WaitingScreen userData={userData} />
+      )}
+      
+      {(status === 'chatting' || status === 'disconnected') && (
+        <ChatScreen
+          userData={userData}
+          partner={partner}
+          messages={messages}
+          isTyping={isTyping}
+          isDisconnected={status === 'disconnected'}
+          onSendMessage={handleSendMessage}
+          onTyping={handleTyping}
+          onSkip={handleSkip}
+          onStop={handleStop}
+          onReconnect={handleReconnect}
+        />
+      )}
+    </div>
+  );
+}
+
+export default App;
