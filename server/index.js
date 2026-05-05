@@ -6,6 +6,17 @@ const cors = require('cors');
 const app = express();
 app.use(cors());
 
+// Root route to show server is running
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'Server is running!',
+    service: 'School Chat API',
+    endpoints: {
+      socket: '/socket.io/'
+    }
+  });
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
