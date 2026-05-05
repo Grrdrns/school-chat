@@ -11,7 +11,8 @@ function ChatSetup({
   onSendMessage,
   onTyping,
   onSkip,
-  onStop
+  onStop,
+  onFindNewMatch
 }) {
   const [college, setCollege] = useState('');
   const [course, setCourse] = useState('');
@@ -75,8 +76,9 @@ function ChatSetup({
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const showChatArea = status === 'waiting' || status === 'chatting' || status === 'disconnected';
-  const canChat = status === 'chatting' || status === 'disconnected';
+  const showChatArea = status === 'waiting' || status === 'chatting' || status === 'ended' || status === 'disconnected';
+  const canChat = status === 'chatting'; // Only allow typing when actively chatting
+  const chatEnded = status === 'ended' || status === 'disconnected';
 
   return (
     <div style={{
@@ -131,6 +133,55 @@ function ChatSetup({
               <p style={{ color: '#999', fontSize: '0.85rem' }}>
                 Your identity is completely anonymous.
               </p>
+            </div>
+          ) : chatEnded ? (
+            // Chat ended - show ended state with Find New Match button
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              padding: '40px'
+            }}>
+              <div style={{
+                width: '80px',
+                height: '80px',
+                background: '#ffebee',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '24px',
+                fontSize: '40px'
+              }}>
+                👋
+              </div>
+              <h3 style={{ color: '#333', fontSize: '1.3rem', marginBottom: '12px' }}>
+                Chat Ended
+              </h3>
+              <p style={{ color: '#666', fontSize: '0.95rem', marginBottom: '8px' }}>
+                {partner ? `${partner.nickname} has left the conversation` : 'Your partner has left'}
+              </p>
+              <p style={{ color: '#999', fontSize: '0.85rem', marginBottom: '24px' }}>
+                You can find a new match to continue chatting
+              </p>
+              <button
+                onClick={onFindNewMatch}
+                style={{
+                  padding: '14px 32px',
+                  background: '#17a2b8',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Find New Match
+              </button>
             </div>
           ) : status === 'waiting' ? (
             // Waiting for match
@@ -361,14 +412,14 @@ function ChatSetup({
                 placeholder="Enter your college name"
                 value={college}
                 onChange={(e) => setCollege(e.target.value)}
-                disabled={canChat}
+                disabled={status === 'chatting' || status === 'waiting'}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
                   border: '1px solid #ddd',
                   borderRadius: '6px',
                   fontSize: '0.9rem',
-                  background: canChat ? '#f5f5f5' : 'white'
+                  background: (status === 'chatting' || status === 'waiting') ? '#f5f5f5' : 'white'
                 }}
               />
             </div>
@@ -382,14 +433,14 @@ function ChatSetup({
                 placeholder="e.g., Computer Science, Engineering"
                 value={course}
                 onChange={(e) => setCourse(e.target.value)}
-                disabled={canChat}
+                disabled={status === 'chatting' || status === 'waiting'}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
                   border: '1px solid #ddd',
                   borderRadius: '6px',
                   fontSize: '0.9rem',
-                  background: canChat ? '#f5f5f5' : 'white'
+                  background: (status === 'chatting' || status === 'waiting') ? '#f5f5f5' : 'white'
                 }}
               />
             </div>
@@ -403,14 +454,14 @@ function ChatSetup({
                 placeholder="e.g., gaming, music, coding"
                 value={interests}
                 onChange={(e) => setInterests(e.target.value)}
-                disabled={canChat}
+                disabled={status === 'chatting' || status === 'waiting'}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
                   border: '1px solid #ddd',
                   borderRadius: '6px',
                   fontSize: '0.9rem',
-                  background: canChat ? '#f5f5f5' : 'white'
+                  background: (status === 'chatting' || status === 'waiting') ? '#f5f5f5' : 'white'
                 }}
               />
             </div>
@@ -421,19 +472,19 @@ function ChatSetup({
               fontSize: '0.85rem',
               color: '#666',
               marginBottom: '16px',
-              cursor: canChat ? 'default' : 'pointer'
+              cursor: (status === 'chatting' || status === 'waiting') ? 'default' : 'pointer'
             }}>
               <input
                 type="checkbox"
                 checked={matchSimilar}
                 onChange={(e) => setMatchSimilar(e.target.checked)}
-                disabled={canChat}
+                disabled={status === 'chatting' || status === 'waiting'}
                 style={{ marginRight: '8px' }}
               />
               Match with similar interests
             </label>
 
-            {!showChatArea ? (
+            {(status === 'setup' || status === 'ended') ? (
               <button 
                 onClick={handleStart}
                 style={{
@@ -448,7 +499,7 @@ function ChatSetup({
                   cursor: 'pointer'
                 }}
               >
-                Start Chat
+                {status === 'ended' ? 'Start New Chat' : 'Start Chat'}
               </button>
             ) : (
               status === 'waiting' ? (
@@ -461,6 +512,17 @@ function ChatSetup({
                   color: '#e65100'
                 }}>
                   Searching for match...
+                </div>
+              ) : status === 'ended' ? (
+                <div style={{
+                  padding: '12px',
+                  background: '#ffebee',
+                  borderRadius: '6px',
+                  textAlign: 'center',
+                  fontSize: '0.9rem',
+                  color: '#c62828'
+                }}>
+                  Chat ended - Find new match
                 </div>
               ) : status === 'disconnected' ? (
                 <div style={{

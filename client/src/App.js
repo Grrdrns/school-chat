@@ -12,7 +12,7 @@ const SERVER_URL = process.env.REACT_APP_SERVER_URL || (window.location.hostname
 function App() {
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [status, setStatus] = useState('landing'); // 'landing', 'setup', 'waiting', 'chatting', 'disconnected'
+  const [status, setStatus] = useState('landing'); // 'landing', 'setup', 'waiting', 'chatting', 'ended', 'disconnected'
   const [userData, setUserData] = useState(null);
   const [partner, setPartner] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -73,18 +73,25 @@ function App() {
       setIsTyping(typing);
     });
 
-    newSocket.on('partnerDisconnected', () => {
-      setStatus('disconnected');
+    newSocket.on('chatEnded', (data) => {
+      setStatus('ended'); // Chat ended - show "Find New Match" button
       setMessages(prev => [...prev, {
-        text: 'Your partner has disconnected.',
+        text: data.message || 'Your partner has left the conversation.',
         sender: 'System',
         isSystem: true,
         timestamp: Date.now()
       }]);
-      setPartner(null);
+      // Don't clear partner - keep it to show who left
     });
 
     newSocket.on('skipped', () => {
+      setStatus('waiting');
+      setPartner(null);
+      setMessages([]);
+    });
+
+    newSocket.on('findNewMatch', () => {
+      // User clicked Find New Match, now waiting
       setStatus('waiting');
       setPartner(null);
       setMessages([]);
@@ -128,16 +135,19 @@ function App() {
 
   const handleStop = () => {
     if (socket) {
-      socket.disconnect();
+      socket.emit('skip'); // Use skip instead of disconnect to properly end chat
     }
-    setStatus('login');
-    setUserData(null);
+    setStatus('setup'); // Go back to setup, not login
     setPartner(null);
     setMessages([]);
-    
-    // Reconnect
-    const newSocket = io(SERVER_URL);
-    setSocket(newSocket);
+  };
+
+  const handleFindNewMatch = () => {
+    if (socket) {
+      socket.emit('findNewMatch');
+    }
+    setStatus('waiting');
+    setMessages([]);
   };
 
   const handleReconnect = () => {
@@ -187,7 +197,7 @@ function App() {
         />
       )}
       
-      {(status === 'waiting' || status === 'chatting' || status === 'disconnected') && (
+      {(status === 'waiting' || status === 'chatting' || status === 'ended' || status === 'disconnected') && (
         <ChatSetup 
           onLogin={handleLogin}
           status={status}
@@ -195,11 +205,12 @@ function App() {
           partner={partner}
           messages={messages}
           isTyping={isTyping}
-          isDisconnected={status === 'disconnected'}
+          isDisconnected={status === 'ended' || status === 'disconnected'}
           onSendMessage={handleSendMessage}
           onTyping={handleTyping}
           onSkip={handleSkip}
           onStop={handleStop}
+          onFindNewMatch={handleFindNewMatch}
         />
       )}
     </div>

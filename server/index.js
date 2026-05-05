@@ -203,6 +203,76 @@ io.on('connection', (socket) => {
     socket.emit('skipped');
   });
   
+  // Find new match after chat ended
+  socket.on('findNewMatch', () => {
+    const user = userSockets.get(socket.id);
+    if (user) {
+      // Try to find a match immediately
+      const match = findMatch(user);
+      
+      if (match && match.score > 0) {
+        // Remove matched user from waiting pool
+        waitingUsers.splice(match.index, 1);
+        
+        const partner = match.user;
+        const roomId = `${socket.id}-${partner.id}`;
+        
+        // Create chat room
+        socket.join(roomId);
+        partner.socket.join(roomId);
+        
+        // Store active chat
+        const chatInfo = {
+          roomId,
+          user1: user,
+          user2: partner,
+          createdAt: Date.now()
+        };
+        
+        activeChats.set(socket.id, chatInfo);
+        activeChats.set(partner.id, chatInfo);
+        
+        // Calculate common interests for display
+        let commonInterests = [];
+        if (user.interests && partner.interests) {
+          const userInterests = user.interests.split(',').map(i => i.trim()).filter(i => i);
+          const partnerInterests = partner.interests.split(',').map(i => i.trim()).filter(i => i);
+          commonInterests = userInterests.filter(i => partnerInterests.includes(i));
+        }
+        
+        // Notify both users
+        socket.emit('matched', {
+          roomId,
+          partner: {
+            nickname: partner.nickname,
+            course: partner.course,
+            college: partner.college
+          },
+          commonInterests: commonInterests,
+          matchScore: match.score
+        });
+        
+        partner.socket.emit('matched', {
+          roomId,
+          partner: {
+            nickname: user.nickname,
+            course: user.course,
+            college: user.college
+          },
+          commonInterests: commonInterests,
+          matchScore: match.score
+        });
+        
+        console.log(`Matched: ${user.nickname} with ${partner.nickname} - Score: ${match.score}${commonInterests.length > 0 ? ` - Common: ${commonInterests.join(', ')}` : ''}`);
+      } else {
+        // No match found, add to waiting pool
+        waitingUsers.push(user);
+        socket.emit('waiting');
+        console.log(`${user.nickname} added to waiting pool (${waitingUsers.length} waiting)`);
+      }
+    }
+  });
+  
   // Handle disconnect
   socket.on('disconnect', () => {
     handleDisconnect(socket);
@@ -225,15 +295,16 @@ function handleDisconnect(socket) {
     const partner = userSockets.get(partnerId);
     
     if (partner) {
-      partner.socket.emit('partnerDisconnected');
+      // Notify partner that chat ended - DON'T auto-queue them
+      partner.socket.emit('chatEnded', { 
+        reason: 'partner_left',
+        message: 'Your partner has left the conversation'
+      });
       partner.socket.leave(chat.roomId);
       
       // Remove partner's chat record
       activeChats.delete(partnerId);
-      
-      // Add partner back to waiting pool
-      waitingUsers.push(partner);
-      partner.socket.emit('waiting');
+      // Partner stays in 'chatEnded' state until they click "Find New Match"
     }
     
     socket.leave(chat.roomId);
