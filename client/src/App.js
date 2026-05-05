@@ -4,9 +4,9 @@ import LoginScreen from './components/LoginScreen';
 import ChatScreen from './components/ChatScreen';
 import WaitingScreen from './components/WaitingScreen';
 
-const SERVER_URL = process.env.REACT_APP_SERVER_URL || window.location.hostname === 'localhost' 
+const SERVER_URL = process.env.REACT_APP_SERVER_URL || (window.location.hostname === 'localhost' 
   ? 'http://localhost:5000' 
-  : 'https://school-chat-server-production.up.railway.app'; // Update this with your deployed server URL
+  : 'https://school-chat-production.up.railway.app');
 
 function App() {
   const [socket, setSocket] = useState(null);
