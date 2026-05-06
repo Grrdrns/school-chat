@@ -448,7 +448,7 @@ function ChatSetup({
 
             <div style={{ marginBottom: '12px' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', color: '#666', marginBottom: '4px' }}>
-                Interests (optional)
+                 same Interests searches (optional)
               </label>
               <input
                 type="text"
