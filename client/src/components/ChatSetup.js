@@ -17,6 +17,8 @@ function ChatSetup({
   const [college, setCollege] = useState('');
   const [course, setCourse] = useState('');
   const [interests, setInterests] = useState('');
+  const [interestTags, setInterestTags] = useState([]);
+  const [tagInput, setTagInput] = useState('');
   const [matchSimilar, setMatchSimilar] = useState(false);
   const [inputText, setInputText] = useState('');
   const [typingTimeout, setTypingTimeout] = useState(null);
@@ -27,6 +29,21 @@ function ChatSetup({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
+  const handleAddTag = (e) => {
+    if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
+      e.preventDefault();
+      const tag = tagInput.trim().toLowerCase();
+      if (tag && !interestTags.includes(tag)) {
+        setInterestTags([...interestTags, tag]);
+        setTagInput('');
+      }
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    setInterestTags(interestTags.filter(tag => tag !== tagToRemove));
+  };
+
   const handleStart = () => {
     // Generate random anonymous name
     const anonymousNames = ['Stranger', 'Student', 'Anonymous', 'User'];
@@ -36,7 +53,7 @@ function ChatSetup({
       nickname: randomName,
       course: course.trim() || 'general',
       college: college.trim() || 'buksu',
-      interests: interests.trim(),
+      interests: interestTags.join(','),
       matchSimilar: matchSimilar
     });
   };
@@ -448,23 +465,76 @@ function ChatSetup({
 
             <div style={{ marginBottom: '12px' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', color: '#666', marginBottom: '4px' }}>
-                 same Interests searches (optional if gusto kag same searches)
+                 What do you wanna talk about?
               </label>
-              <input
-                type="text"
-                placeholder="e.g.,pickleball, etc etc"
-                value={interests}
-                onChange={(e) => setInterests(e.target.value)}
-                disabled={status === 'chatting' || status === 'waiting'}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  fontSize: '0.9rem',
-                  background: (status === 'chatting' || status === 'waiting') ? '#f5f5f5' : 'white'
-                }}
-              />
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '6px',
+                padding: '8px',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                background: (status === 'chatting' || status === 'waiting') ? '#f5f5f5' : 'white',
+                minHeight: '42px',
+                alignItems: 'center'
+              }}>
+                {interestTags.map((tag, index) => (
+                  <span
+                    key={index}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 10px',
+                      background: '#17a2b8',
+                      color: 'white',
+                      borderRadius: '16px',
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    {tag}
+                    <button
+                      onClick={() => handleRemoveTag(tag)}
+                      disabled={status === 'chatting' || status === 'waiting'}
+                      style={{
+                        background: 'rgba(255,255,255,0.3)',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '18px',
+                        height: '18px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        color: 'white'
+                      }}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                <input
+                  type="text"
+                  placeholder={interestTags.length === 0 ? "Type and press Enter..." : ""}
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleAddTag}
+                  disabled={status === 'chatting' || status === 'waiting'}
+                  style={{
+                    flex: 1,
+                    minWidth: '80px',
+                    border: 'none',
+                    outline: 'none',
+                    fontSize: '0.9rem',
+                    background: 'transparent',
+                    padding: '4px'
+                  }}
+                />
+              </div>
+              <p style={{ fontSize: '0.75rem', color: '#999', margin: '4px 0 0 0' }}>
+                Press Enter, comma, or space to add
+              </p>
             </div>
 
             <label style={{
@@ -482,7 +552,7 @@ function ChatSetup({
                 disabled={status === 'chatting' || status === 'waiting'}
                 style={{ marginRight: '8px' }}
               />
-              Match with similar interests
+              Find strangers with common interests
             </label>
 
             {(status === 'setup' || status === 'ended') ? (
