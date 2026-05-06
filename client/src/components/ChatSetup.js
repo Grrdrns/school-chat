@@ -406,7 +406,7 @@ function ChatSetup({
             
             <div style={{ marginBottom: '12px' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', color: '#666', marginBottom: '4px' }}>
-                College/University
+                College
               </label>
               <input
                 type="text"
@@ -431,7 +431,7 @@ function ChatSetup({
               </label>
               <input
                 type="text"
-                placeholder="e.g., Computer Science, Engineering"
+                placeholder="e.g.,IT, EMC"
                 value={course}
                 onChange={(e) => setCourse(e.target.value)}
                 disabled={status === 'chatting' || status === 'waiting'}
