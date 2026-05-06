@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import LandingPage from './components/LandingPage';
 import ChatSetup from './components/ChatSetup';
+import MobileSetup from './components/MobileSetup';
+import MobileChat from './components/MobileChat';
 import ChatScreen from './components/ChatScreen';
 import WaitingScreen from './components/WaitingScreen';
 
@@ -17,6 +19,16 @@ function App() {
   const [partner, setPartner] = useState(null);
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 900);
+
+  // Mobile detection
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 900);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Initialize socket connection
   useEffect(() => {
@@ -181,7 +193,32 @@ function App() {
         <LandingPage onProceed={handleProceed} />
       )}
       
-      {status === 'setup' && (
+      {/* Mobile Layout */}
+      {isMobile && status === 'setup' && (
+        <MobileSetup 
+          onLogin={handleLogin}
+          status={status}
+        />
+      )}
+      
+      {isMobile && (status === 'waiting' || status === 'chatting' || status === 'ended' || status === 'disconnected') && (
+        <MobileChat 
+          status={status}
+          partner={partner}
+          messages={messages}
+          isTyping={isTyping}
+          isDisconnected={status === 'ended' || status === 'disconnected'}
+          onSendMessage={handleSendMessage}
+          onTyping={handleTyping}
+          onSkip={handleSkip}
+          onStop={handleStop}
+          onFindNewMatch={handleFindNewMatch}
+          onBackToSetup={() => setStatus('setup')}
+        />
+      )}
+      
+      {/* Desktop Layout - Two Column */}
+      {!isMobile && status === 'setup' && (
         <ChatSetup 
           onLogin={handleLogin}
           status={status}
@@ -197,7 +234,7 @@ function App() {
         />
       )}
       
-      {(status === 'waiting' || status === 'chatting' || status === 'ended' || status === 'disconnected') && (
+      {!isMobile && (status === 'waiting' || status === 'chatting' || status === 'ended' || status === 'disconnected') && (
         <ChatSetup 
           onLogin={handleLogin}
           status={status}
