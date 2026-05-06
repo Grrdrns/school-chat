@@ -87,11 +87,11 @@ function MobileSetup({ onLogin, status }) {
           
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontSize: '0.9rem', color: '#666', marginBottom: '6px' }}>
-              College/University
+              College
             </label>
             <input
               type="text"
-              placeholder="Enter your college name"
+              placeholder="Enter college name"
               value={college}
               onChange={(e) => setCollege(e.target.value)}
               disabled={isWaiting}
@@ -112,7 +112,7 @@ function MobileSetup({ onLogin, status }) {
             </label>
             <input
               type="text"
-              placeholder="e.g., Computer Science, Engineering"
+              placeholder="e.g., IT, EMC"
               value={course}
               onChange={(e) => setCourse(e.target.value)}
               disabled={isWaiting}
