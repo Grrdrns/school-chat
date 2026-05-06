@@ -448,7 +448,7 @@ function ChatSetup({
 
             <div style={{ marginBottom: '12px' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', color: '#666', marginBottom: '4px' }}>
-                 same Interests searches (optional)
+                 same Interests searches (optional if gusto kag same searches)
               </label>
               <input
                 type="text"
