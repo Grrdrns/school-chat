@@ -361,7 +361,28 @@ body {
   color: #333;
 }
 
-/* Responsive */
+/* Mobile Responsive - Two Column Layout */
+@media (max-width: 900px) {
+  .main-content {
+    flex-direction: column !important;
+    min-height: auto !important;
+    padding: 0 10px !important;
+    gap: 10px !important;
+  }
+  
+  .sidebar {
+    width: 100% !important;
+    order: -1; /* Move sidebar to top on mobile */
+    margin-bottom: 10px;
+  }
+  
+  /* Adjust header for mobile */
+  .App > div:first-child > div {
+    margin: 0 10px !important;
+    border-radius: 0 0 12px 12px !important;
+  }
+}
+
 @media (max-width: 600px) {
   .login-box {
     padding: 30px 24px;
@@ -379,6 +400,21 @@ body {
   
   .message {
     max-width: 85%;
+  }
+  
+  /* Mobile sidebar adjustments */
+  .sidebar {
+    padding: 16px !important;
+  }
+  
+  .sidebar h3 {
+    font-size: 1rem !important;
+  }
+  
+  /* Touch-friendly inputs */
+  input, button {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    min-height: 44px; /* Touch target size */
   }
 }
 

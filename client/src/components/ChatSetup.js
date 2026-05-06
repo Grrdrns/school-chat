@@ -99,7 +99,7 @@ function ChatSetup({
       </div>
 
       {/* Main Content */}
-      <div style={{
+      <div className="main-content" style={{
         display: 'flex',
         maxWidth: '1200px',
         margin: '20px auto',
@@ -389,13 +389,14 @@ function ChatSetup({
         </div>
 
         {/* Right - Sidebar */}
-        <div style={{
+        <div className="sidebar" style={{
           width: '320px',
           background: 'white',
           borderRadius: '12px',
           padding: '24px',
           border: '1px solid #e0e0e0',
-          height: 'fit-content'
+          height: 'fit-content',
+          flexShrink: 0
         }}>
           {/* Start a chat */}
           <div style={{ marginBottom: '24px' }}>
