@@ -410,7 +410,7 @@ function ChatSetup({
               </label>
               <input
                 type="text"
-                placeholder="Enter your college name"
+                placeholder="Enter college name"
                 value={college}
                 onChange={(e) => setCollege(e.target.value)}
                 disabled={status === 'chatting' || status === 'waiting'}
@@ -452,7 +452,7 @@ function ChatSetup({
               </label>
               <input
                 type="text"
-                placeholder="e.g., gaming, music, coding"
+                placeholder="e.g.,pickleball, etc etc"
                 value={interests}
                 onChange={(e) => setInterests(e.target.value)}
                 disabled={status === 'chatting' || status === 'waiting'}
