@@ -111,7 +111,7 @@ function ChatSetup({
         margin: '0 20px',
         color: 'white'
       }}>
-        <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>BuksuOne</h1>
+        <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>BukChat</h1>
         <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', opacity: 0.9 }}>Talk to strangers!</p>
       </div>
 
@@ -486,7 +486,7 @@ function ChatSetup({
                       alignItems: 'center',
                       gap: '4px',
                       padding: '4px 10px',
-                      background: '#17a2b8',
+                      backgro d: '#17a2b8',
                       color: 'white',
                       borderRadius: '16px',
                       fontSize: '0.85rem'
@@ -623,13 +623,13 @@ function ChatSetup({
 
           <hr style={{ border: 'none', borderTop: '1px solid #e0e0e0', margin: '20px 0' }} />
 
-          {/* About BuksuOne */}
+          {/* About BukChat */}
           <div style={{ marginBottom: '20px' }}>
             <h4 style={{ margin: '0 0 8px 0', fontSize: '0.95rem', fontWeight: 600, color: '#333' }}>
-              About BuksuOne
+              About BukChat
             </h4>
             <p style={{ margin: 0, fontSize: '0.8rem', color: '#666', lineHeight: '1.5' }}>
-              BuksuOne connects you with random students from your campus. Chat anonymously and make new connections.
+              BukChat connects you with random students from your campus. Chat anonymously and make new connections.
             </p>
           </div>
 

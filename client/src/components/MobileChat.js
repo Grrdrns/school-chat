@@ -186,7 +186,7 @@ function MobileChat({
         alignItems: 'center'
       }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600 }}>BuksuOne</h1>
+          <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600 }}>BukChat</h1>
           <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', opacity: 0.9 }}>
             {partner ? `${partner.nickname} • ${partner.college}` : 'Chatting...'}
           </p>

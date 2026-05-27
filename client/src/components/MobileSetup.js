@@ -51,7 +51,7 @@ function MobileSetup({ onLogin, status }) {
         padding: '16px 20px',
         color: 'white'
       }}>
-        <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>BuksuOne</h1>
+        <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>BukChat</h1>
         <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', opacity: 0.9 }}>Talk to strangers!</p>
       </div>
 

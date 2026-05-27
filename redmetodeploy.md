@@ -9,7 +9,7 @@ Go to railway.app and sign up with GitHub
 Create new project → Deploy from GitHub repo
 Push your code to GitHub first:
 bash
-cd c:\BuksuOne
+cd c:\BukChat
 git init
 git add .
 git commit -m "Initial commit"
@@ -25,7 +25,7 @@ javascript
 const SERVER_URL = 'https://your-railway-url.railway.app';
 Step 3: Deploy Frontend (Netlify)
 Go to netlify.com
-Drag & drop the c:\BuksuOne\client\build folder
+Drag & drop the c:\BukChat\client\build folder
 Done! Get your Netlify URL
 Option 2: Using Render (Alternative)
 Backend:

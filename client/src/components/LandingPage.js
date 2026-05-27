@@ -29,7 +29,7 @@ function LandingPage({ onProceed }) {
             fontWeight: 700,
             color: '#17a2b8'
           }}>
-            BuksuOne
+            BukChat
           </h1>
           <p style={{
             margin: '8px 0 0 0',
@@ -47,7 +47,7 @@ function LandingPage({ onProceed }) {
           lineHeight: '1.7',
           marginBottom: '24px'
         }}>
-          BuksuOne is an anon chat platform here sa Buksu that connects you with other 
+          BukChat is an anon chat platform here sa Buksu that connects you with other 
           people randomly. So kay introvert man ko, gahimo ko ani to gather new friends and 
           etc. Make friends online and meet them in person if you vibe! This is your chance to 
           talk to someone new from your campus without the pressure.
@@ -159,7 +159,7 @@ function LandingPage({ onProceed }) {
             transition: 'background 0.2s'
           }}
         >
-          Proceed to BuksuOne
+          Proceed to BukChat
         </button>
       </div>
     </div>
