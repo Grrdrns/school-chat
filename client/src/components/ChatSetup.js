@@ -486,7 +486,7 @@ function ChatSetup({
                       alignItems: 'center',
                       gap: '4px',
                       padding: '4px 10px',
-                      backgro d: '#17a2b8',
+                      backgroundColor: '#17a2b8',
                       color: 'white',
                       borderRadius: '16px',
                       fontSize: '0.85rem'
