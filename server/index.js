@@ -19,28 +19,55 @@ app.get('/', (req, res) => {
   });
 });
 
-// Location verification endpoint - frontend calls this on load
-app.get('/verify-location', (req, res) => {
-  // If location check middleware didn't block it, location is valid
-  if (req.userLocation.isFromMindanao) {
+// GPS Location verification endpoint - frontend calls this on load with GPS coordinates
+app.post('/verify-location', (req, res) => {
+  const { lat, lng, accuracy } = req.body;
+
+  // Validate coordinates
+  if (!lat || !lng || typeof lat !== 'number' || typeof lng !== 'number') {
+    return res.status(400).json({
+      error: 'Invalid Coordinates',
+      message: 'Please provide valid latitude and longitude',
+      details: 'Location data is missing or invalid.'
+    });
+  }
+
+  // Check Bukidnon campuses
+  const inBukidnon = (
+    lat >= 8.0 && lat <= 8.6 &&
+    lng >= 124.4 && lng <= 125.1
+  );
+
+  // Check Misamis Oriental campuses
+  const inMisamisOriental = (
+    lat >= 8.7 && lat <= 9.2 &&
+    lng >= 124.3 && lng <= 124.6
+  );
+
+  if (inBukidnon || inMisamisOriental) {
+    const region = inBukidnon ? 'Bukidnon' : 'Misamis Oriental';
     return res.status(200).json({
       success: true,
       message: 'Location verified',
-      location: {
-        region: req.userLocation.region,
-        city: req.userLocation.city,
-        country: req.userLocation.country
+      region: region,
+      coordinates: {
+        latitude: lat,
+        longitude: lng,
+        accuracy: accuracy
       }
     });
   }
-  
-  // This shouldn't happen because middleware blocks before reaching here
-  // But just in case:
+
+  // Not in service area
   return res.status(405).json({
     error: 'Access Denied',
-    message: 'Not from Mindanao',
-    details: 'You are not connecting from Mindanao, Philippines. This service is only available for users in Mindanao.',
-    yourLocation: req.userLocation
+    message: 'Outside Service Area',
+    details: 'This app is only for students at BUKSU campuses in Bukidnon and Misamis Oriental, Philippines. Your current location is outside the service area.',
+    yourLocation: {
+      lat: lat,
+      lng: lng,
+      accuracy: accuracy
+    }
   });
 });
 
@@ -59,6 +86,55 @@ io.use(socketLocationCheck);
 const waitingUsers = [];  
 const activeChats = new Map();
 const userSockets = new Map();
+
+// BUKSU Bukidnon Campuses bounding box
+// Covers: Baungon, Cabanglasan, Damulog, Impasug-ong, Kadingilan, Kalilangan, 
+// Kitaotao, Lantapan, Libona, Malitbog, Quezon, San Fernando, Talakag
+const BUKIDNON_BOUNDS = {
+  minLat: 8.0,
+  maxLat: 8.6,
+  minLng: 124.4,
+  maxLng: 125.1
+};
+
+// BUKSU Misamis Oriental Campuses bounding box
+// Covers: Alubijid, Medina, Talisayan
+const MISAMIS_ORIENTAL_BOUNDS = {
+  minLat: 8.7,
+  maxLat: 9.2,
+  minLng: 124.3,
+  maxLng: 124.6
+};
+
+/**
+ * Check if coordinates are within any BUKSU campus area (Bukidnon or Misamis Oriental)
+ * @param {number} lat - Latitude
+ * @param {number} lng - Longitude
+ * @returns {boolean}
+ */
+function isInBukidnon(lat, lng) {
+  if (!lat || !lng || typeof lat !== 'number' || typeof lng !== 'number') {
+    return false;
+  }
+  
+  // Check Bukidnon campuses
+  const inBukidnon = (
+    lat >= BUKIDNON_BOUNDS.minLat &&
+    lat <= BUKIDNON_BOUNDS.maxLat &&
+    lng >= BUKIDNON_BOUNDS.minLng &&
+    lng <= BUKIDNON_BOUNDS.maxLng
+  );
+  
+  // Check Misamis Oriental campuses
+  const inMisamisOriental = (
+    lat >= MISAMIS_ORIENTAL_BOUNDS.minLat &&
+    lat <= MISAMIS_ORIENTAL_BOUNDS.maxLat &&
+    lng >= MISAMIS_ORIENTAL_BOUNDS.minLng &&
+    lng <= MISAMIS_ORIENTAL_BOUNDS.maxLng
+  );
+  
+  return inBukidnon || inMisamisOriental;
+}
 
 // Calculate match score between two users
 // College/course are just INFO - matching is based on interests (optional) or random
@@ -132,6 +208,23 @@ io.on('connection', (socket) => {
   
   // User joins waiting pool
   socket.on('join', (userData) => {
+    // Check GPS coordinates
+    const { lat, lng } = userData;
+    
+    if (!isInBukidnon(lat, lng)) {
+      socket.emit('access_denied', {
+        message: 'Access Denied',
+        details: 'This app is only for students at BUKSU campuses in Bukidnon and Misamis Oriental, Philippines. Your current location is outside the service area.',
+        userLocation: {
+          lat: lat,
+          lng: lng,
+          accuracy: userData.accuracy
+        }
+      });
+      socket.disconnect(true);
+      return;
+    }
+
     const user = {
       id: socket.id,
       nickname: userData.nickname,
@@ -139,7 +232,9 @@ io.on('connection', (socket) => {
       college: userData.college.toLowerCase(),
       interests: userData.interests ? userData.interests.toLowerCase() : '',
       matchSimilar: userData.matchSimilar || false,
-      socket: socket
+      socket: socket,
+      lat: lat,
+      lng: lng
     };
     
     userSockets.set(socket.id, user);

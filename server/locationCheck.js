@@ -143,96 +143,21 @@ function locationCheckMiddleware(req, res, next) {
 }
 
 /**
- * Socket.IO middleware: Check location on socket connection
+ * Socket.IO middleware: Allow socket connections (GPS validation happens on join)
  */
 function socketLocationCheck(socket, next) {
   // Get user's real IP from socket handshake
   const clientIP = socket.handshake.headers['x-forwarded-for']?.split(',')[0].trim() ||
                    socket.handshake.address;
 
-  // Allow localhost for development
-  if (clientIP === '127.0.0.1' || clientIP === '::1' || clientIP === 'localhost') {
-    socket.userLocation = {
-      ip: clientIP,
-      geo: null,
-      isFromMindanao: true,
-      isDevelopment: true,
-      country: 'DEV',
-      region: 'Local',
-      timezone: 'Local'
-    };
-    return next();
-  }
-
-  // Lookup location
-  const geo = getLocationFromIP(clientIP);
-
-  // Store on socket for later use
+  // Just allow the connection - GPS validation will happen in the 'join' event handler
   socket.userLocation = {
     ip: clientIP,
-    geo: geo,
-    isFromMindanao: false,
-    isDevelopment: false,
-    country: geo?.country || 'Unknown',
-    region: geo?.region || 'Unknown',
-    city: geo?.city || 'Unknown',
-    timezone: geo?.timezone || 'Unknown'
+    isDevelopment: clientIP === '127.0.0.1' || clientIP === '::1' || clientIP === 'localhost'
   };
 
-  console.log(`[SocketLocationCheck] IP: ${clientIP} | Region: ${geo?.region} | City: ${geo?.city} | Country: ${geo?.country}`);
-
-  // Check if from Philippines
-  if (geo?.country !== 'PH') {
-    const error = new Error('Access Denied: Not from Mindanao');
-    error.data = {
-      code: 405,
-      message: 'Not from Mindanao',
-      details: `You are connecting from ${geo?.country || 'unknown country'}. This service is only available for users in Mindanao, Philippines.`,
-      yourLocation: {
-        country: geo?.country,
-        city: geo?.city,
-        region: geo?.region,
-        timezone: geo?.timezone
-      }
-    };
-    return next(error);
-  }
-
-  // Check if from Mindanao using region code (more reliable) OR coordinates
-  const isFromMindanao = isAllowedRegion(geo?.region) || 
-                         (geo?.ll && isWithinMindanao(geo.ll[0], geo.ll[1]));
-
-  if (!isFromMindanao) {
-    const error = new Error('Access Denied: Not from Mindanao');
-    error.data = {
-      code: 405,
-      message: 'Not from Mindanao',
-      details: `You are in ${geo?.city || 'unknown city'}, ${geo?.region || 'unknown region'}, Philippines. This service is only available for users in Mindanao (Bukidnon area).`,
-      yourLocation: {
-        country: geo?.country,
-        city: geo?.city,
-        region: geo?.region,
-        timezone: geo?.timezone,
-        coordinates: geo?.ll ? {
-          latitude: geo.ll[0],
-          longitude: geo.ll[1]
-        } : null
-      }
-    };
-    return next(error);
-  }
-
-  // User is from Mindanao
-  socket.userLocation.isFromMindanao = true;
+  console.log(`[SocketConnection] Client IP: ${clientIP} (GPS validation will happen on join)`);
   next();
 }
 
-module.exports = {
-  locationCheckMiddleware,
-  socketLocationCheck,
-  getLocationFromIP,
-  isWithinMindanao,
-  isAllowedRegion,
-  MINDANAO_BOUNDS,
-  ALLOWED_REGIONS
-};
+module.exports = { socketLocationCheck, locationCheckMiddleware };

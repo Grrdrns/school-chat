@@ -23,27 +23,62 @@ function App() {
   const [locationError, setLocationError] = useState(null);
   const [isVerifying, setIsVerifying] = useState(true);
 
-  // Verify location on app load
+  // Verify location on app load using GPS coordinates
   useEffect(() => {
-    const verifyLocation = async () => {
-      try {
-        const response = await fetch(`${SERVER_URL}/verify-location`);
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          setLocationError(errorData);
-          setIsVerifying(false);
-          return;
-        }
-        
-        setLocationError(null);
-        setIsVerifying(false);
-      } catch (error) {
-        console.error('Location verification error:', error);
+    const verifyLocation = () => {
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude, accuracy } = position.coords;
+            
+            try {
+              const response = await fetch(`${SERVER_URL}/verify-location`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lat: latitude, lng: longitude, accuracy })
+              });
+
+              if (!response.ok) {
+                const errorData = await response.json();
+                setLocationError(errorData);
+                setIsVerifying(false);
+                return;
+              }
+
+              const data = await response.json();
+              console.log('Location verified:', data);
+              setLocationError(null);
+              setIsVerifying(false);
+            } catch (error) {
+              console.error('Location verification error:', error);
+              setLocationError({
+                error: 'Connection Error',
+                message: 'Unable to verify your location',
+                details: 'Could not connect to the server to verify your location.'
+              });
+              setIsVerifying(false);
+            }
+          },
+          (error) => {
+            console.error('Geolocation error:', error);
+            setLocationError({
+              error: 'Location Permission Denied',
+              message: 'Please enable location access',
+              details: 'You must enable GPS/location access to use this app. This service is only available for students at BUKSU campuses in Bukidnon and Misamis Oriental.'
+            });
+            setIsVerifying(false);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          }
+        );
+      } else {
         setLocationError({
-          error: 'Connection Error',
-          message: 'Unable to verify your location',
-          details: 'Could not connect to the server to verify your location.'
+          error: 'Geolocation Not Supported',
+          message: 'Your browser does not support geolocation',
+          details: 'Please use a modern browser that supports GPS location services.'
         });
         setIsVerifying(false);
       }
@@ -87,7 +122,7 @@ function App() {
           maxWidth: '500px',
           textAlign: 'center'
         }}>
-          <h1 style={{ color: '#d32f2f', marginBottom: '20px', fontSize: '48px' }}>405</h1>
+          <h1 style={{ color: '#d32f2f', marginBottom: '20px', fontSize: '48px' }}>⛔</h1>
           <h2 style={{ color: '#d32f2f', marginBottom: '15px' }}>{locationError.message || 'Access Denied'}</h2>
           <p style={{ color: '#666', fontSize: '16px', marginBottom: '20px' }}>
             {locationError.details || 'You do not have access to this service.'}
@@ -102,9 +137,9 @@ function App() {
               fontSize: '14px'
             }}>
               <p><strong>Your Location:</strong></p>
-              <p>City: {locationError.yourLocation.city || 'Unknown'}</p>
-              <p>Region: {locationError.yourLocation.region || 'Unknown'}</p>
-              <p>Country: {locationError.yourLocation.country || 'Unknown'}</p>
+              <p>Latitude: {locationError.yourLocation.lat?.toFixed(4)}°</p>
+              <p>Longitude: {locationError.yourLocation.lng?.toFixed(4)}°</p>
+              <p>Accuracy: {locationError.yourLocation.accuracy?.toFixed(0)}m</p>
             </div>
           )}
         </div>
@@ -198,6 +233,11 @@ function App() {
       setStatus('waiting');
       setPartner(null);
       setMessages([]);
+    });
+
+    newSocket.on('access_denied', (data) => {
+      setLocationError(data);
+      setStatus('setup'); // Go back to setup so they can try again
     });
 
     return () => {

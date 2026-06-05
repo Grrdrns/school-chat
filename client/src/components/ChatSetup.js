@@ -1,5 +1,52 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+// BUKSU Colleges and Courses (Undergraduate Only)
+const COLLEGES_DATA = {
+  'College of Arts and Sciences': [
+    'Bachelor of Arts in Economics',
+    'Bachelor of Arts in English Language',
+    'Bachelor of Arts in Philosophy Pre-Law',
+    'Bachelor of Arts in Philosophy Teaching Track',
+    'Bachelor of Arts in Sociology',
+    'Bachelor of Science in Biology Major in Biotechnology',
+    'Bachelor of Science in Community Development',
+    'Bachelor of Science in Development Communication',
+    'Bachelor of Science in Environmental Science major in Environmental Heritage Studies',
+    'Bachelor of Science in Mathematics'
+  ],
+  'College of Business': [
+    'Bachelor of Science in Accountancy',
+    'Bachelor of Science in Business Administration major in Financial Management',
+    'Bachelor of Science in Hospitality Management'
+  ],
+  'College of Education': [
+    'Bachelor of Early Childhood Education',
+    'Bachelor of Elementary Education',
+    'Bachelor of Physical Education',
+    'Bachelor of Secondary Education Major in English',
+    'Bachelor of Secondary Education Major in Filipino',
+    'Bachelor of Secondary Education Major in Mathematics',
+    'Bachelor of Secondary Education Major in Science',
+    'Bachelor of Secondary Education Major in Social Studies'
+  ],
+  'College of Nursing': [
+    'Bachelor of Science in Nursing'
+  ],
+  'College of Law': [
+    'Juris Doctor'
+  ],
+  'College of Technologies': [
+    'Bachelor of Science in Automotive Technology',
+    'Bachelor of Science in Electronics Technology',
+    'Bachelor of Science in Entertainment and Multimedia Computing Major in Digital Animation Technology',
+    'Bachelor of Science in Food Technology',
+    'Bachelor of Science in Information Technology'
+  ],
+  'College of Public Administration and Governance': [
+    'Bachelor of Public Administration'
+  ]
+};
+
 function ChatSetup({ 
   onLogin, 
   status, 
@@ -24,6 +71,11 @@ function ChatSetup({
   const [typingTimeout, setTypingTimeout] = useState(null);
   const messagesEndRef = useRef(null);
 
+  // Reset course when college changes
+  useEffect(() => {
+    setCourse('');
+  }, [college]);
+
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -45,17 +97,40 @@ function ChatSetup({
   };
 
   const handleStart = () => {
-    // Generate random anonymous name
-    const anonymousNames = ['Stranger', 'Student', 'Anonymous', 'User'];
-    const randomName = anonymousNames[Math.floor(Math.random() * anonymousNames.length)] + Math.floor(Math.random() * 1000);
-    
-    onLogin({
-      nickname: randomName,
-      course: course.trim() || 'general',
-      college: college.trim() || 'buksu',
-      interests: interestTags.join(','),
-      matchSimilar: matchSimilar
-    });
+    // Request GPS location before joining
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude, accuracy } = position.coords;
+          
+          // Generate random anonymous name
+          const anonymousNames = ['Stranger', 'Student', 'Anonymous', 'User'];
+          const randomName = anonymousNames[Math.floor(Math.random() * anonymousNames.length)] + Math.floor(Math.random() * 1000);
+          
+          onLogin({
+            nickname: randomName,
+            course: course.trim() || 'general',
+            college: college.trim() || 'buksu',
+            interests: interestTags.join(','),
+            matchSimilar: matchSimilar,
+            lat: latitude,
+            lng: longitude,
+            accuracy: accuracy
+          });
+        },
+        (error) => {
+          alert('Please enable location access to use this app. You must be in Bukidnon, Philippines to access this service.');
+          console.error('Geolocation error:', error);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    } else {
+      alert('Your browser does not support geolocation. Please use a modern browser.');
+    }
   };
 
   const handleSend = (e) => {
@@ -425,9 +500,7 @@ function ChatSetup({
               <label style={{ display: 'block', fontSize: '0.85rem', color: '#666', marginBottom: '4px' }}>
                 College
               </label>
-              <input
-                type="text"
-                placeholder="Enter college name"
+              <select
                 value={college}
                 onChange={(e) => setCollege(e.target.value)}
                 disabled={status === 'chatting' || status === 'waiting'}
@@ -437,30 +510,44 @@ function ChatSetup({
                   border: '1px solid #ddd',
                   borderRadius: '6px',
                   fontSize: '0.9rem',
-                  background: (status === 'chatting' || status === 'waiting') ? '#f5f5f5' : 'white'
+                  background: (status === 'chatting' || status === 'waiting') ? '#f5f5f5' : 'white',
+                  cursor: (status === 'chatting' || status === 'waiting') ? 'not-allowed' : 'pointer'
                 }}
-              />
+              >
+                <option value="">Select a college</option>
+                {Object.keys(COLLEGES_DATA).map((collegeName) => (
+                  <option key={collegeName} value={collegeName}>
+                    {collegeName}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div style={{ marginBottom: '12px' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', color: '#666', marginBottom: '4px' }}>
                 Course/Department
               </label>
-              <input
-                type="text"
-                placeholder="e.g.,IT, EMC"
+              <select
                 value={course}
                 onChange={(e) => setCourse(e.target.value)}
-                disabled={status === 'chatting' || status === 'waiting'}
+                disabled={status === 'chatting' || status === 'waiting' || !college}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
                   border: '1px solid #ddd',
                   borderRadius: '6px',
                   fontSize: '0.9rem',
-                  background: (status === 'chatting' || status === 'waiting') ? '#f5f5f5' : 'white'
+                  background: (status === 'chatting' || status === 'waiting' || !college) ? '#f5f5f5' : 'white',
+                  cursor: (status === 'chatting' || status === 'waiting' || !college) ? 'not-allowed' : 'pointer'
                 }}
-              />
+              >
+                <option value="">Select a course</option>
+                {college && COLLEGES_DATA[college] && COLLEGES_DATA[college].map((courseName) => (
+                  <option key={courseName} value={courseName}>
+                    {courseName}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div style={{ marginBottom: '12px' }}>
