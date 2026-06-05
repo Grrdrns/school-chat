@@ -23,65 +23,90 @@ function App() {
   const [locationError, setLocationError] = useState(null);
   const [isVerifying, setIsVerifying] = useState(true);
 
-  // Verify location on app load using GPS coordinates
-  useEffect(() => {
-    const verifyLocation = () => {
+  // Helper function: Request GPS with retry logic and accuracy check
+  const requestGPSWithRetry = (onSuccess, onError, retries = 3) => {
+    const attemptGPS = (retriesLeft) => {
       if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(
-          async (position) => {
+          (position) => {
             const { latitude, longitude, accuracy } = position.coords;
+            console.log(`GPS attempt: lat=${latitude.toFixed(4)}, lng=${longitude.toFixed(4)}, accuracy=${accuracy.toFixed(0)}m, retries left=${retriesLeft}`);
             
-            try {
-              const response = await fetch(`${SERVER_URL}/verify-location`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lat: latitude, lng: longitude, accuracy })
-              });
-
-              if (!response.ok) {
-                const errorData = await response.json();
-                setLocationError(errorData);
-                setIsVerifying(false);
-                return;
-              }
-
-              const data = await response.json();
-              console.log('Location verified:', data);
-              setLocationError(null);
-              setIsVerifying(false);
-            } catch (error) {
-              console.error('Location verification error:', error);
-              setLocationError({
-                error: 'Connection Error',
-                message: 'Unable to verify your location',
-                details: 'Could not connect to the server to verify your location.'
-              });
-              setIsVerifying(false);
+            // Accept if accuracy is good (< 100m) OR this is last retry
+            if (accuracy < 100 || retriesLeft === 0) {
+              onSuccess({ latitude, longitude, accuracy });
+            } else if (retriesLeft > 0) {
+              console.log(`Accuracy ${accuracy.toFixed(0)}m is not good enough, retrying...`);
+              setTimeout(() => attemptGPS(retriesLeft - 1), 2000);
             }
           },
           (error) => {
-            console.error('Geolocation error:', error);
-            setLocationError({
-              error: 'Location Permission Denied',
-              message: 'Please enable location access',
-              details: 'You must enable GPS/location access to use this app. This service is only available for students at BUKSU campuses in Bukidnon and Misamis Oriental.'
-            });
-            setIsVerifying(false);
+            console.error(`GPS error on attempt ${3 - retriesLeft}:`, error);
+            if (retriesLeft > 0) {
+              console.log(`Retrying GPS (${retriesLeft} attempts left)...`);
+              setTimeout(() => attemptGPS(retriesLeft - 1), 2000);
+            } else {
+              onError(error);
+            }
           },
           {
             enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
+            timeout: 15000, // Wait up to 15 seconds
+            maximumAge: 30000 // Use cache if < 30 seconds old
           }
         );
       } else {
-        setLocationError({
-          error: 'Geolocation Not Supported',
-          message: 'Your browser does not support geolocation',
-          details: 'Please use a modern browser that supports GPS location services.'
-        });
-        setIsVerifying(false);
+        onError(new Error('Geolocation not supported'));
       }
+    };
+    attemptGPS(retries);
+  };
+
+  // Verify location on app load using GPS coordinates with retry
+  useEffect(() => {
+    const verifyLocation = () => {
+      requestGPSWithRetry(
+        async (position) => {
+          const { latitude, longitude, accuracy } = position;
+          
+          try {
+            const response = await fetch(`${SERVER_URL}/verify-location`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ lat: latitude, lng: longitude, accuracy })
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              setLocationError(errorData);
+              setIsVerifying(false);
+              return;
+            }
+
+            const data = await response.json();
+            console.log('Location verified:', data);
+            setLocationError(null);
+            setIsVerifying(false);
+          } catch (error) {
+            console.error('Location verification error:', error);
+            setLocationError({
+              error: 'Connection Error',
+              message: 'Unable to verify your location',
+              details: 'Could not connect to the server to verify your location.'
+            });
+            setIsVerifying(false);
+          }
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          setLocationError({
+            error: 'Location Permission Denied',
+            message: 'Please enable location access',
+            details: 'You must enable GPS/location access to use this app. This service is only available for students at BUKSU campuses in Bukidnon and Misamis Oriental.'
+          });
+          setIsVerifying(false);
+        }
+      );
     };
 
     verifyLocation();

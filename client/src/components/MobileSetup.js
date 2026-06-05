@@ -75,40 +75,69 @@ function MobileSetup({ onLogin, status }) {
   };
 
   const handleStart = () => {
-    // Request GPS location before joining
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude, accuracy } = position.coords;
-          
-          // Generate random anonymous name
-          const anonymousNames = ['Stranger', 'Student', 'Anonymous', 'User'];
-          const randomName = anonymousNames[Math.floor(Math.random() * anonymousNames.length)] + Math.floor(Math.random() * 1000);
-          
-          onLogin({
-            nickname: randomName,
-            course: course.trim() || 'general',
-            college: college.trim() || 'buksu',
-            interests: interestTags.join(','),
-            matchSimilar: matchSimilar,
-            lat: latitude,
-            lng: longitude,
-            accuracy: accuracy
-          });
-        },
-        (error) => {
-          alert('Please enable location access to use this app. You must be in Bukidnon, Philippines to access this service.');
-          console.error('Geolocation error:', error);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
+    // Helper: Request GPS with retry logic and accuracy check
+    const requestGPSWithRetry = (onSuccess, onError, retries = 3) => {
+      const attemptGPS = (retriesLeft) => {
+        if ('geolocation' in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const { latitude, longitude, accuracy } = position.coords;
+              console.log(`GPS attempt: lat=${latitude.toFixed(4)}, lng=${longitude.toFixed(4)}, accuracy=${accuracy.toFixed(0)}m`);
+              
+              // Accept if accuracy is good (< 100m) OR this is last retry
+              if (accuracy < 100 || retriesLeft === 0) {
+                onSuccess({ latitude, longitude, accuracy });
+              } else if (retriesLeft > 0) {
+                console.log(`Accuracy ${accuracy.toFixed(0)}m not good enough, retrying...`);
+                setTimeout(() => attemptGPS(retriesLeft - 1), 2000);
+              }
+            },
+            (error) => {
+              console.error(`GPS error:`, error);
+              if (retriesLeft > 0) {
+                console.log(`Retrying GPS (${retriesLeft} attempts left)...`);
+                setTimeout(() => attemptGPS(retriesLeft - 1), 2000);
+              } else {
+                onError(error);
+              }
+            },
+            {
+              enableHighAccuracy: true,
+              timeout: 15000, // Wait up to 15 seconds
+              maximumAge: 30000 // Use cache if < 30 seconds old
+            }
+          );
+        } else {
+          onError(new Error('Geolocation not supported'));
         }
-      );
-    } else {
-      alert('Your browser does not support geolocation. Please use a modern browser.');
-    }
+      };
+      attemptGPS(retries);
+    };
+
+    requestGPSWithRetry(
+      (position) => {
+        const { latitude, longitude, accuracy } = position;
+        
+        // Generate random anonymous name
+        const anonymousNames = ['Stranger', 'Student', 'Anonymous', 'User'];
+        const randomName = anonymousNames[Math.floor(Math.random() * anonymousNames.length)] + Math.floor(Math.random() * 1000);
+        
+        onLogin({
+          nickname: randomName,
+          course: course.trim() || 'general',
+          college: college.trim() || 'buksu',
+          interests: interestTags.join(','),
+          matchSimilar: matchSimilar,
+          lat: latitude,
+          lng: longitude,
+          accuracy: accuracy
+        });
+      },
+      (error) => {
+        alert('Please enable location access to use this app. You must be at a BUKSU campus in Bukidnon or Misamis Oriental.');
+        console.error('Geolocation error:', error);
+      }
+    );
   };
 
   const isWaiting = status === 'waiting';
