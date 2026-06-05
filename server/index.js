@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const geoip = require('geoip-lite');
 
 const app = express();
 app.use(cors());
@@ -95,6 +96,28 @@ function findMatch(user) {
 }
 
 io.on('connection', (socket) => {
+  // Get user's real IP (works behind proxies too)
+  const rawIP = socket.handshake.headers['x-forwarded-for']?.split(',')[0].trim()
+                || socket.handshake.address;
+  const ip = rawIP?.replace('::ffff:', ''); // normalize IPv4
+
+  // Geo-check — allow local dev + Bukidnon (Region X, Northern Mindanao)
+  const geo = geoip.lookup(ip);
+  const isLocal = ip === '127.0.0.1' || ip === '::1';
+  const isAllowed = isLocal || (
+    geo?.country === 'PH' &&
+    geo?.region === 'X' // Region X = Northern Mindanao (covers Bukidnon)
+  );
+
+  if (!isAllowed) {
+    console.log(`Blocked connection from: ${ip} (${geo?.city}, ${geo?.region}, ${geo?.country})`);
+    socket.emit('access_denied', { message: 'This app is only available in Bukidnon.' });
+    socket.disconnect(true);
+    return;
+  }
+
+  console.log(`Allowed: ${ip} → ${geo?.city ?? 'localhost'}`);
+  // rest of your existing code continues below...
   console.log('User connected:', socket.id);
   
   // User joins waiting pool
