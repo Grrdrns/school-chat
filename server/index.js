@@ -19,6 +19,31 @@ app.get('/', (req, res) => {
   });
 });
 
+// Location verification endpoint - frontend calls this on load
+app.get('/verify-location', (req, res) => {
+  // If location check middleware didn't block it, location is valid
+  if (req.userLocation.isFromMindanao) {
+    return res.status(200).json({
+      success: true,
+      message: 'Location verified',
+      location: {
+        region: req.userLocation.region,
+        city: req.userLocation.city,
+        country: req.userLocation.country
+      }
+    });
+  }
+  
+  // This shouldn't happen because middleware blocks before reaching here
+  // But just in case:
+  return res.status(405).json({
+    error: 'Access Denied',
+    message: 'Not from Mindanao',
+    details: 'You are not connecting from Mindanao, Philippines. This service is only available for users in Mindanao.',
+    yourLocation: req.userLocation
+  });
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {

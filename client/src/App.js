@@ -20,6 +20,97 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 900);
+  const [locationError, setLocationError] = useState(null);
+  const [isVerifying, setIsVerifying] = useState(true);
+
+  // Verify location on app load
+  useEffect(() => {
+    const verifyLocation = async () => {
+      try {
+        const response = await fetch(`${SERVER_URL}/verify-location`);
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          setLocationError(errorData);
+          setIsVerifying(false);
+          return;
+        }
+        
+        setLocationError(null);
+        setIsVerifying(false);
+      } catch (error) {
+        console.error('Location verification error:', error);
+        setLocationError({
+          error: 'Connection Error',
+          message: 'Unable to verify your location',
+          details: 'Could not connect to the server to verify your location.'
+        });
+        setIsVerifying(false);
+      }
+    };
+
+    verifyLocation();
+  }, []);
+
+  // Show location error screen if not from allowed region
+  if (isVerifying) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        backgroundColor: '#f5f5f5'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <h2>Verifying location...</h2>
+          <p>Please wait while we verify your location.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (locationError) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        backgroundColor: '#fff3cd'
+      }}>
+        <div style={{ 
+          backgroundColor: 'white',
+          padding: '40px',
+          borderRadius: '8px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          maxWidth: '500px',
+          textAlign: 'center'
+        }}>
+          <h1 style={{ color: '#d32f2f', marginBottom: '20px', fontSize: '48px' }}>405</h1>
+          <h2 style={{ color: '#d32f2f', marginBottom: '15px' }}>{locationError.message || 'Access Denied'}</h2>
+          <p style={{ color: '#666', fontSize: '16px', marginBottom: '20px' }}>
+            {locationError.details || 'You do not have access to this service.'}
+          </p>
+          {locationError.yourLocation && (
+            <div style={{ 
+              backgroundColor: '#f9f9f9', 
+              padding: '15px', 
+              borderRadius: '4px',
+              marginTop: '20px',
+              textAlign: 'left',
+              fontSize: '14px'
+            }}>
+              <p><strong>Your Location:</strong></p>
+              <p>City: {locationError.yourLocation.city || 'Unknown'}</p>
+              <p>Region: {locationError.yourLocation.region || 'Unknown'}</p>
+              <p>Country: {locationError.yourLocation.country || 'Unknown'}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // Mobile detection
   useEffect(() => {
