@@ -34,8 +34,8 @@ app.post('/verify-location', (req, res) => {
 
   // Check Bukidnon campuses
   const inBukidnon = (
-    lat >= 8.0 && lat <= 8.6 &&
-    lng >= 124.4 && lng <= 125.1
+    lat >= 7.9 && lat <= 8.7 &&
+    lng >= 124.2 && lng <= 125.3
   );
 
   // Check Misamis Oriental campuses
@@ -62,7 +62,7 @@ app.post('/verify-location', (req, res) => {
   return res.status(405).json({
     error: 'Access Denied',
     message: 'Outside Service Area',
-    details: 'This app is only for students at BUKSU campuses in Bukidnon and Misamis Oriental, Philippines. Your current location is outside the service area.',
+    details: 'This app is only for students in  Bukidnon and Misamis Oriental, Philippines. Your current location is outside the service area.',
     yourLocation: {
       lat: lat,
       lng: lng,
@@ -89,12 +89,12 @@ const userSockets = new Map();
 
 // BUKSU Bukidnon Campuses bounding box
 // Covers: Baungon, Cabanglasan, Damulog, Impasug-ong, Kadingilan, Kalilangan, 
-// Kitaotao, Lantapan, Libona, Malitbog, Quezon, San Fernando, Talakag
+// Kitaotao, Lantapan, Libona, Malitbog, Quezon, San Fernando, Talakag (including Malaybalay)
 const BUKIDNON_BOUNDS = {
-  minLat: 8.0,
-  maxLat: 8.6,
-  minLng: 124.4,
-  maxLng: 125.1
+  minLat: 7.9,
+  maxLat: 8.7,
+  minLng: 124.2,
+  maxLng: 125.3
 };
 
 // BUKSU Misamis Oriental Campuses bounding box
