@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import LandingPage from './components/LandingPage';
 import ChatSetup from './components/ChatSetup';
@@ -20,157 +20,90 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 900);
-  const [locationError, setLocationError] = useState(null);
-  const [isVerifying, setIsVerifying] = useState(true);
+  const [connectionError, setConnectionError] = useState(null);
 
-  // Helper function: Request GPS with retry logic and accuracy check
-  const requestGPSWithRetry = (onSuccess, onError, retries = 3) => {
-    const attemptGPS = (retriesLeft) => {
-      if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const { latitude, longitude, accuracy } = position.coords;
-            console.log(`GPS attempt: lat=${latitude.toFixed(4)}, lng=${longitude.toFixed(4)}, accuracy=${accuracy.toFixed(0)}m, retries left=${retriesLeft}`);
-            
-            // Accept if accuracy is good (< 100m) OR this is last retry
-            if (accuracy < 100 || retriesLeft === 0) {
-              onSuccess({ latitude, longitude, accuracy });
-            } else if (retriesLeft > 0) {
-              console.log(`Accuracy ${accuracy.toFixed(0)}m is not good enough, retrying...`);
-              setTimeout(() => attemptGPS(retriesLeft - 1), 2000);
-            }
-          },
-          (error) => {
-            console.error(`GPS error on attempt ${3 - retriesLeft}:`, error);
-            if (retriesLeft > 0) {
-              console.log(`Retrying GPS (${retriesLeft} attempts left)...`);
-              setTimeout(() => attemptGPS(retriesLeft - 1), 2000);
-            } else {
-              onError(error);
-            }
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 15000, // Wait up to 15 seconds
-            maximumAge: 30000 // Use cache if < 30 seconds old
-          }
-        );
-      } else {
-        onError(new Error('Geolocation not supported'));
-      }
-    };
-    attemptGPS(retries);
-  };
-
-  // Verify location on app load using GPS coordinates with retry
-  useEffect(() => {
-    const verifyLocation = () => {
-      requestGPSWithRetry(
-        async (position) => {
-          const { latitude, longitude, accuracy } = position;
-          
-          try {
-            const response = await fetch(`${SERVER_URL}/verify-location`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ lat: latitude, lng: longitude, accuracy })
-            });
-
-            if (!response.ok) {
-              const errorData = await response.json();
-              setLocationError(errorData);
-              setIsVerifying(false);
-              return;
-            }
-
-            const data = await response.json();
-            console.log('Location verified:', data);
-            setLocationError(null);
-            setIsVerifying(false);
-          } catch (error) {
-            console.error('Location verification error:', error);
-            setLocationError({
-              error: 'Connection Error',
-              message: 'Unable to verify your location',
-              details: 'Could not connect to the server to verify your location.'
-            });
-            setIsVerifying(false);
-          }
-        },
-        (error) => {
-          console.error('Geolocation error:', error);
-          setLocationError({
-            error: 'Location Permission Denied',
-            message: 'Please enable location access',
-            details: 'You must enable GPS/location access to use this app. This service is only available for students at BUKSU campuses in Bukidnon and Misamis Oriental.'
-          });
-          setIsVerifying(false);
-        }
-      );
-    };
-
-    verifyLocation();
-  }, []);
-
-  // Show location error screen if not from allowed region
-  if (isVerifying) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        backgroundColor: '#f5f5f5'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <h2>Verifying location...</h2>
-          <p>Please wait while we verify your location.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (locationError) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        backgroundColor: '#fff3cd'
-      }}>
-        <div style={{ 
-          backgroundColor: 'white',
-          padding: '40px',
-          borderRadius: '8px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          maxWidth: '500px',
-          textAlign: 'center'
-        }}>
-          <h1 style={{ color: '#d32f2f', marginBottom: '20px', fontSize: '48px' }}>⛔</h1>
-          <h2 style={{ color: '#d32f2f', marginBottom: '15px' }}>{locationError.message || 'Access Denied'}</h2>
-          <p style={{ color: '#666', fontSize: '16px', marginBottom: '20px' }}>
-            {locationError.details || 'You do not have access to this service.'}
-          </p>
-          {locationError.yourLocation && (
-            <div style={{ 
-              backgroundColor: '#f9f9f9', 
-              padding: '15px', 
-              borderRadius: '4px',
-              marginTop: '20px',
-              textAlign: 'left',
-              fontSize: '14px'
-            }}>
-              <p><strong>Your Location:</strong></p>
-              <p>Latitude: {locationError.yourLocation.lat?.toFixed(4)}°</p>
-              <p>Longitude: {locationError.yourLocation.lng?.toFixed(4)}°</p>
-              <p>Accuracy: {locationError.yourLocation.accuracy?.toFixed(0)}m</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
+  /*
+   * GPS location check (disabled — using IP-based check on server instead)
+   * Uncomment to re-enable device GPS verification on app load.
+   *
+   * const [locationError, setLocationError] = useState(null);
+   * const [isVerifying, setIsVerifying] = useState(true);
+   *
+   * const requestGPSWithRetry = (onSuccess, onError, retries = 3) => {
+   *   const attemptGPS = (retriesLeft) => {
+   *     if ('geolocation' in navigator) {
+   *       navigator.geolocation.getCurrentPosition(
+   *         (position) => {
+   *           const { latitude, longitude, accuracy } = position.coords;
+   *           if (accuracy < 100 || retriesLeft === 0) {
+   *             onSuccess({ latitude, longitude, accuracy });
+   *           } else if (retriesLeft > 0) {
+   *             setTimeout(() => attemptGPS(retriesLeft - 1), 2000);
+   *           }
+   *         },
+   *         (error) => {
+   *           if (retriesLeft > 0) {
+   *             setTimeout(() => attemptGPS(retriesLeft - 1), 2000);
+   *           } else {
+   *             onError(error);
+   *           }
+   *         },
+   *         { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+   *       );
+   *     } else {
+   *       onError(new Error('Geolocation not supported'));
+   *     }
+   *   };
+   *   attemptGPS(retries);
+   * };
+   *
+   * useEffect(() => {
+   *   const verifyLocation = () => {
+   *     requestGPSWithRetry(
+   *       async (position) => {
+   *         const { latitude, longitude, accuracy } = position;
+   *         try {
+   *           const response = await fetch(`${SERVER_URL}/verify-location`, {
+   *             method: 'POST',
+   *             headers: { 'Content-Type': 'application/json' },
+   *             body: JSON.stringify({ lat: latitude, lng: longitude, accuracy })
+   *           });
+   *           if (!response.ok) {
+   *             setLocationError(await response.json());
+   *             setIsVerifying(false);
+   *             return;
+   *           }
+   *           setLocationError(null);
+   *           setIsVerifying(false);
+   *         } catch (error) {
+   *           setLocationError({
+   *             error: 'Connection Error',
+   *             message: 'Unable to verify your location',
+   *             details: 'Could not connect to the server to verify your location.'
+   *           });
+   *           setIsVerifying(false);
+   *         }
+   *       },
+   *       () => {
+   *         setLocationError({
+   *           error: 'Location Permission Denied',
+   *           message: 'Please enable location access',
+   *           details: 'You must enable GPS/location access to use this app.'
+   *         });
+   *         setIsVerifying(false);
+   *       }
+   *     );
+   *   };
+   *   verifyLocation();
+   * }, []);
+   *
+   * if (isVerifying) {
+   *   return ( ... "Verifying location..." screen ... );
+   * }
+   * if (locationError) {
+   *   return ( ... location error screen with lat/lng/accuracy ... );
+   * }
+   */
 
   // Mobile detection
   useEffect(() => {
@@ -188,7 +121,17 @@ function App() {
 
     newSocket.on('connect', () => {
       setIsConnected(true);
+      setConnectionError(null);
       console.log('Connected to server');
+    });
+
+    newSocket.on('connect_error', (error) => {
+      setIsConnected(false);
+      setConnectionError({
+        message: 'Access Denied',
+        details: error.message || 'This service is only available for users in Mindanao, Philippines.'
+      });
+      console.error('Connection error:', error.message);
     });
 
     newSocket.on('disconnect', () => {
@@ -260,10 +203,13 @@ function App() {
       setMessages([]);
     });
 
-    newSocket.on('access_denied', (data) => {
-      setLocationError(data);
-      setStatus('setup'); // Go back to setup so they can try again
-    });
+    /*
+     * GPS: re-enable when using device location on join
+     * newSocket.on('access_denied', (data) => {
+     *   setLocationError(data);
+     *   setStatus('setup');
+     * });
+     */
 
     return () => {
       newSocket.close();
@@ -333,7 +279,32 @@ function App() {
 
   return (
     <div className="App">
-      {!isConnected && status !== 'landing' && status !== 'setup' && (
+      {connectionError && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          backgroundColor: '#fff3cd'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '40px',
+            borderRadius: '8px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            maxWidth: '500px',
+            textAlign: 'center'
+          }}>
+            <h1 style={{ color: '#d32f2f', marginBottom: '20px', fontSize: '48px' }}>⛔</h1>
+            <h2 style={{ color: '#d32f2f', marginBottom: '15px' }}>{connectionError.message}</h2>
+            <p style={{ color: '#666', fontSize: '16px' }}>
+              {connectionError.details}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!connectionError && !isConnected && status !== 'landing' && status !== 'setup' && (
         <div style={{
           background: '#ff4757',
           color: 'white',
@@ -345,19 +316,18 @@ function App() {
         </div>
       )}
       
-      {status === 'landing' && (
+      {!connectionError && status === 'landing' && (
         <LandingPage onProceed={handleProceed} />
       )}
       
-      {/* Mobile Layout */}
-      {isMobile && status === 'setup' && (
+      {!connectionError && isMobile && status === 'setup' && (
         <MobileSetup 
           onLogin={handleLogin}
           status={status}
         />
       )}
       
-      {isMobile && (status === 'waiting' || status === 'chatting' || status === 'ended' || status === 'disconnected') && (
+      {!connectionError && isMobile && (status === 'waiting' || status === 'chatting' || status === 'ended' || status === 'disconnected') && (
         <MobileChat 
           status={status}
           partner={partner}
@@ -373,8 +343,7 @@ function App() {
         />
       )}
       
-      {/* Desktop Layout - Two Column */}
-      {!isMobile && status === 'setup' && (
+      {!connectionError && !isMobile && status === 'setup' && (
         <ChatSetup 
           onLogin={handleLogin}
           status={status}
@@ -390,7 +359,7 @@ function App() {
         />
       )}
       
-      {!isMobile && (status === 'waiting' || status === 'chatting' || status === 'ended' || status === 'disconnected') && (
+      {!connectionError && !isMobile && (status === 'waiting' || status === 'chatting' || status === 'ended' || status === 'disconnected') && (
         <ChatSetup 
           onLogin={handleLogin}
           status={status}
