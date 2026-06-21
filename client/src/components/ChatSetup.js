@@ -59,7 +59,8 @@ function ChatSetup({
   onTyping,
   onSkip,
   onStop,
-  onFindNewMatch
+  onFindNewMatch,
+  onCancelSearch
 }) {
   const [college, setCollege] = useState('');
   const [course, setCourse] = useState('');
@@ -335,9 +336,24 @@ function ChatSetup({
               <h3 style={{ color: '#333', fontSize: '1.2rem', marginBottom: '8px' }}>
                 Looking for someone...
               </h3>
-              <p style={{ color: '#666', fontSize: '0.9rem' }}>
+              <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '24px' }}>
                 Finding a match based on your preferences
               </p>
+              <button
+                onClick={onCancelSearch}
+                style={{
+                  padding: '12px 32px',
+                  background: '#dc3545',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel Search
+              </button>
             </div>
           ) : (
             // Active chat
@@ -723,15 +739,34 @@ function ChatSetup({
               </button>
             ) : (
               status === 'waiting' ? (
-                <div style={{
-                  padding: '12px',
-                  background: '#fff3e0',
-                  borderRadius: '6px',
-                  textAlign: 'center',
-                  fontSize: '0.9rem',
-                  color: '#e65100'
-                }}>
-                  Searching for match...
+                <div>
+                  <button
+                    onClick={onCancelSearch}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      background: '#dc3545',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '0.95rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      marginBottom: '8px'
+                    }}
+                  >
+                    Cancel Search
+                  </button>
+                  <div style={{
+                    padding: '12px',
+                    background: '#fff3e0',
+                    borderRadius: '6px',
+                    textAlign: 'center',
+                    fontSize: '0.9rem',
+                    color: '#e65100'
+                  }}>
+                    Searching for match...
+                  </div>
                 </div>
               ) : status === 'ended' ? (
                 <div style={{

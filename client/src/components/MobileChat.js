@@ -11,7 +11,8 @@ function MobileChat({
   onSkip,
   onStop,
   onFindNewMatch,
-  onBackToSetup
+  onBackToSetup,
+  onCancelSearch
 }) {
   const [inputText, setInputText] = useState('');
   const [typingTimeout, setTypingTimeout] = useState(null);
@@ -85,18 +86,19 @@ function MobileChat({
           Finding a match
         </p>
         <button
-          onClick={onBackToSetup}
+          onClick={onCancelSearch}
           style={{
             padding: '12px 24px',
-            background: '#fff',
-            color: '#666',
-            border: '1px solid #ddd',
+            background: '#dc3545',
+            color: 'white',
+            border: 'none',
             borderRadius: '8px',
             fontSize: '0.9rem',
+            fontWeight: 600,
             cursor: 'pointer'
           }}
         >
-          Cancel
+          Cancel Search
         </button>
       </div>
     );

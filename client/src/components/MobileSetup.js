@@ -47,7 +47,7 @@ const COLLEGES_DATA = {
   ]
 };
 
-function MobileSetup({ onLogin, status, userData }) {
+function MobileSetup({ onLogin, status, userData, onCancelSearch }) {
   const [college, setCollege] = useState('');
   const [course, setCourse] = useState('');
   const [nickname, setNickname] = useState('');
@@ -373,15 +373,34 @@ function MobileSetup({ onLogin, status, userData }) {
           </label>
 
           {isWaiting ? (
-            <div style={{
-              padding: '16px',
-              background: '#fff3e0',
-              borderRadius: '10px',
-              textAlign: 'center',
-              fontSize: '0.95rem',
-              color: '#e65100'
-            }}>
-              Searching for match...
+            <div>
+              <button
+                onClick={onCancelSearch}
+                style={{
+                  width: '100%',
+                  padding: '16px',
+                  background: '#dc3545',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  marginBottom: '12px'
+                }}
+              >
+                Cancel Search
+              </button>
+              <div style={{
+                padding: '16px',
+                background: '#fff3e0',
+                borderRadius: '10px',
+                textAlign: 'center',
+                fontSize: '0.95rem',
+                color: '#e65100'
+              }}>
+                Searching for match...
+              </div>
             </div>
           ) : (
             <button 

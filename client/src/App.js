@@ -325,6 +325,15 @@ function App() {
     setStatus('setup');
   };
 
+  const handleCancelSearch = () => {
+    if (socket) {
+      socket.emit('skip');
+    }
+    setStatus('setup');
+    setPartner(null);
+    setMessages([]);
+  };
+
   return (
     <div className="App">
       {connectionError && (
@@ -373,6 +382,7 @@ function App() {
           onLogin={handleLogin}
           status={status}
           userData={userData}
+          onCancelSearch={handleCancelSearch}
         />
       )}
       
@@ -389,6 +399,7 @@ function App() {
           onStop={handleStop}
           onFindNewMatch={handleFindNewMatch}
           onBackToSetup={() => setStatus('setup')}
+          onCancelSearch={handleCancelSearch}
         />
       )}
       
@@ -405,6 +416,7 @@ function App() {
           onTyping={handleTyping}
           onSkip={handleSkip}
           onStop={handleStop}
+          onCancelSearch={handleCancelSearch}
         />
       )}
       
@@ -422,6 +434,7 @@ function App() {
           onSkip={handleSkip}
           onStop={handleStop}
           onFindNewMatch={handleFindNewMatch}
+          onCancelSearch={handleCancelSearch}
         />
       )}
     </div>
