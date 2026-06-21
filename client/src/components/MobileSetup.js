@@ -47,9 +47,10 @@ const COLLEGES_DATA = {
   ]
 };
 
-function MobileSetup({ onLogin, status }) {
+function MobileSetup({ onLogin, status, userData }) {
   const [college, setCollege] = useState('');
   const [course, setCourse] = useState('');
+  const [nickname, setNickname] = useState('');
   const [interestTags, setInterestTags] = useState([]);
   const [tagInput, setTagInput] = useState('');
   const [matchSimilar, setMatchSimilar] = useState(false);
@@ -58,6 +59,12 @@ function MobileSetup({ onLogin, status }) {
   useEffect(() => {
     setCourse('');
   }, [college]);
+
+  useEffect(() => {
+    if (userData?.nickname) {
+      setNickname(userData.nickname);
+    }
+  }, [userData?.nickname]);
 
   const handleAddTag = (e) => {
     if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
@@ -75,11 +82,12 @@ function MobileSetup({ onLogin, status }) {
   };
 
   const handleStart = () => {
+    const trimmedNickname = nickname.trim().slice(0, 20);
     const anonymousNames = ['Stranger', 'Student', 'Anonymous', 'User'];
-    const randomName = anonymousNames[Math.floor(Math.random() * anonymousNames.length)] + Math.floor(Math.random() * 1000);
+    const fallbackName = anonymousNames[Math.floor(Math.random() * anonymousNames.length)] + Math.floor(Math.random() * 1000);
 
     onLogin({
-      nickname: randomName,
+      nickname: trimmedNickname || fallbackName,
       course: course.trim() || 'general',
       college: college.trim() || 'buksu',
       interests: interestTags.join(','),
@@ -188,6 +196,31 @@ function MobileSetup({ onLogin, status }) {
           <h3 style={{ margin: '0 0 16px 0', fontSize: '1.1rem', fontWeight: 600, color: '#333' }}>
             Start a chat
           </h3>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '0.9rem', color: '#666', marginBottom: '6px' }}>
+              Nickname
+            </label>
+            <input
+              type="text"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value.slice(0, 20))}
+              placeholder="Choose a nickname (optional)"
+              disabled={isWaiting}
+              maxLength={20}
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                border: '1px solid #ddd',
+                borderRadius: '10px',
+                fontSize: '16px',
+                background: isWaiting ? '#f5f5f5' : 'white'
+              }}
+            />
+            <p style={{ fontSize: '0.8rem', color: '#999', margin: '6px 0 0 0' }}>
+              Shown to your chat partner. Leave blank for a random name.
+            </p>
+          </div>
           
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontSize: '0.9rem', color: '#666', marginBottom: '6px' }}>

@@ -63,6 +63,7 @@ function ChatSetup({
 }) {
   const [college, setCollege] = useState('');
   const [course, setCourse] = useState('');
+  const [nickname, setNickname] = useState('');
   const [interests, setInterests] = useState('');
   const [interestTags, setInterestTags] = useState([]);
   const [tagInput, setTagInput] = useState('');
@@ -75,6 +76,12 @@ function ChatSetup({
   useEffect(() => {
     setCourse('');
   }, [college]);
+
+  useEffect(() => {
+    if (userData?.nickname) {
+      setNickname(userData.nickname);
+    }
+  }, [userData?.nickname]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -97,11 +104,12 @@ function ChatSetup({
   };
 
   const handleStart = () => {
+    const trimmedNickname = nickname.trim().slice(0, 20);
     const anonymousNames = ['Stranger', 'Student', 'Anonymous', 'User'];
-    const randomName = anonymousNames[Math.floor(Math.random() * anonymousNames.length)] + Math.floor(Math.random() * 1000);
+    const fallbackName = anonymousNames[Math.floor(Math.random() * anonymousNames.length)] + Math.floor(Math.random() * 1000);
 
     onLogin({
-      nickname: randomName,
+      nickname: trimmedNickname || fallbackName,
       course: course.trim() || 'general',
       college: college.trim() || 'buksu',
       interests: interestTags.join(','),
@@ -524,6 +532,31 @@ function ChatSetup({
             <h3 style={{ margin: '0 0 16px 0', fontSize: '1.1rem', fontWeight: 600, color: '#333' }}>
               Start a chat
             </h3>
+
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: '#666', marginBottom: '4px' }}>
+                Nickname
+              </label>
+              <input
+                type="text"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value.slice(0, 20))}
+                placeholder="Choose a nickname (optional)"
+                disabled={status === 'chatting' || status === 'waiting'}
+                maxLength={20}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: '0.9rem',
+                  background: (status === 'chatting' || status === 'waiting') ? '#f5f5f5' : 'white'
+                }}
+              />
+              <p style={{ fontSize: '0.75rem', color: '#999', margin: '4px 0 0 0' }}>
+                Shown to your chat partner. Leave blank for a random name.
+              </p>
+            </div>
             
             <div style={{ marginBottom: '12px' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', color: '#666', marginBottom: '4px' }}>

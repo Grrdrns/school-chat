@@ -228,7 +228,7 @@ function App() {
       socket.emit('message', { text });
       setMessages(prev => [...prev, {
         text,
-        sender: 'You',
+        sender: userData?.nickname || 'You',
         isOwn: true,
         timestamp: Date.now()
       }]);
@@ -324,6 +324,7 @@ function App() {
         <MobileSetup 
           onLogin={handleLogin}
           status={status}
+          userData={userData}
         />
       )}
       

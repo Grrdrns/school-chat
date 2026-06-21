@@ -89,6 +89,15 @@ const userSockets = new Map();
  * }
  */
 
+function sanitizeNickname(nickname) {
+  if (!nickname || typeof nickname !== 'string') {
+    return 'Anonymous' + Math.floor(Math.random() * 1000);
+  }
+
+  const cleaned = nickname.trim().slice(0, 20).replace(/[<>]/g, '');
+  return cleaned || ('Anonymous' + Math.floor(Math.random() * 1000));
+}
+
 // Calculate match score between two users
 // College/course are just INFO - matching is based on interests (optional) or random
 function calculateMatchScore(user1, user2) {
@@ -178,7 +187,7 @@ io.on('connection', (socket) => {
 
     const user = {
       id: socket.id,
-      nickname: userData.nickname,
+      nickname: sanitizeNickname(userData.nickname),
       course: userData.course.toLowerCase(),
       college: userData.college.toLowerCase(),
       interests: userData.interests ? userData.interests.toLowerCase() : '',
