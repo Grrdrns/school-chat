@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import LandingPage from './components/LandingPage';
 import ChatSetup from './components/ChatSetup';
@@ -21,6 +21,16 @@ function App() {
   const [isTyping, setIsTyping] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 900);
   const [connectionError, setConnectionError] = useState(null);
+  const userDataRef = useRef(null);
+  const statusRef = useRef('landing');
+
+  useEffect(() => {
+    userDataRef.current = userData;
+  }, [userData]);
+
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
 
   /*
    * GPS location check (disabled — using IP-based check on server instead)
@@ -116,28 +126,52 @@ function App() {
 
   // Initialize socket connection
   useEffect(() => {
-    const newSocket = io(SERVER_URL);
+    const newSocket = io(SERVER_URL, {
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      transports: ['websocket', 'polling']
+    });
     setSocket(newSocket);
+
+    const rejoinIfNeeded = () => {
+      const data = userDataRef.current;
+      const currentStatus = statusRef.current;
+      if (data && ['waiting', 'chatting', 'ended'].includes(currentStatus)) {
+        newSocket.emit('join', data);
+      }
+    };
 
     newSocket.on('connect', () => {
       setIsConnected(true);
       setConnectionError(null);
       console.log('Connected to server');
+      rejoinIfNeeded();
     });
 
     newSocket.on('connect_error', (error) => {
       setIsConnected(false);
-      setConnectionError({
-        message: 'Access Denied',
-        details: error.message || 'This service is only available for users in Mindanao, Philippines.'
-      });
+      const isAccessDenied = error.message?.includes('Mindanao') ||
+        error.message?.includes('Philippines') ||
+        error.message?.includes('service is only available');
+      if (isAccessDenied) {
+        setConnectionError({
+          message: 'Access Denied',
+          details: error.message
+        });
+      }
       console.error('Connection error:', error.message);
     });
 
-    newSocket.on('disconnect', () => {
+    newSocket.on('disconnect', (reason) => {
       setIsConnected(false);
-      setStatus('disconnected');
-      console.log('Disconnected from server');
+      // Partner leaving sets status to 'ended' — don't overwrite that with 'disconnected'
+      if (statusRef.current !== 'ended') {
+        setStatus('disconnected');
+      }
+      console.log('Disconnected from server:', reason);
     });
 
     newSocket.on('waiting', () => {
@@ -218,8 +252,16 @@ function App() {
 
   const handleLogin = (data) => {
     setUserData(data);
-    if (socket) {
-      socket.emit('join', data);
+    userDataRef.current = data;
+    if (!socket) return;
+
+    const emitJoin = () => socket.emit('join', data);
+
+    if (socket.connected) {
+      emitJoin();
+    } else {
+      socket.once('connect', emitJoin);
+      socket.connect();
     }
   };
 
@@ -257,11 +299,17 @@ function App() {
   };
 
   const handleFindNewMatch = () => {
-    if (socket) {
-      socket.emit('findNewMatch');
-    }
+    if (!socket || !userData) return;
+
     setStatus('waiting');
     setMessages([]);
+
+    if (socket.connected) {
+      socket.emit('findNewMatch');
+    } else {
+      socket.once('connect', () => socket.emit('join', userData));
+      socket.connect();
+    }
   };
 
   const handleReconnect = () => {
@@ -304,7 +352,7 @@ function App() {
         </div>
       )}
 
-      {!connectionError && !isConnected && status !== 'landing' && status !== 'setup' && (
+      {!connectionError && !isConnected && (status === 'waiting' || status === 'chatting' || status === 'disconnected') && (
         <div style={{
           background: '#ff4757',
           color: 'white',

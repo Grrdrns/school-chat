@@ -52,12 +52,30 @@ function isAllowedRegion(regionCode) {
  */
 function getLocationFromIP(ip) {
   try {
-    const geo = geoip.lookup(ip);
+    const geo = geoip.lookup(normalizeIP(ip));
     return geo;
   } catch (error) {
     console.error('Error looking up IP:', error);
     return null;
   }
+}
+
+function normalizeIP(ip) {
+  if (!ip) return ip;
+  if (ip.startsWith('::ffff:')) {
+    return ip.slice(7);
+  }
+  return ip;
+}
+
+function getClientIP(reqOrSocket) {
+  const forwarded = reqOrSocket.headers?.['x-forwarded-for'];
+  const rawIP = (typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : null) ||
+                reqOrSocket.socket?.remoteAddress ||
+                reqOrSocket.connection?.remoteAddress ||
+                reqOrSocket.handshake?.address;
+
+  return normalizeIP(rawIP);
 }
 
 function isLocalhost(clientIP) {
@@ -95,16 +113,24 @@ function buildUserLocation(clientIP, geo) {
  * @returns {{ allowed: boolean, userLocation: object, error?: object }}
  */
 function validateMindanaoAccess(clientIP) {
-  if (isLocalhost(clientIP)) {
-    return { allowed: true, userLocation: buildUserLocation(clientIP, null) };
+  const normalizedIP = normalizeIP(clientIP);
+
+  if (isLocalhost(normalizedIP)) {
+    return { allowed: true, userLocation: buildUserLocation(normalizedIP, null) };
   }
 
-  const geo = getLocationFromIP(clientIP);
-  const userLocation = buildUserLocation(clientIP, geo);
+  const geo = getLocationFromIP(normalizedIP);
+  const userLocation = buildUserLocation(normalizedIP, geo);
 
-  console.log(`[LocationCheck] IP: ${clientIP} | Region: ${geo?.region} | City: ${geo?.city} | Country: ${geo?.country}`);
+  console.log(`[LocationCheck] IP: ${normalizedIP} | Region: ${geo?.region} | City: ${geo?.city} | Country: ${geo?.country}`);
 
-  if (geo?.country !== 'PH') {
+  // Unknown IPs can't be geolocated — allow rather than block (common on campus/mobile networks)
+  if (!geo) {
+    userLocation.isFromMindanao = true;
+    return { allowed: true, userLocation };
+  }
+
+  if (geo.country !== 'PH') {
     return {
       allowed: false,
       userLocation,
@@ -156,9 +182,12 @@ function validateMindanaoAccess(clientIP) {
  * Returns 405 if not from Mindanao
  */
 function locationCheckMiddleware(req, res, next) {
-  const clientIP = req.headers['x-forwarded-for']?.split(',')[0].trim() ||
-                   req.socket.remoteAddress ||
-                   req.connection.remoteAddress;
+  // Socket.io handles its own location check — skip to avoid breaking polling transport
+  if (req.path.startsWith('/socket.io')) {
+    return next();
+  }
+
+  const clientIP = getClientIP(req);
 
   const result = validateMindanaoAccess(clientIP);
   req.userLocation = result.userLocation;
@@ -174,8 +203,7 @@ function locationCheckMiddleware(req, res, next) {
  * Socket.IO middleware: Check IP geolocation on connect
  */
 function socketLocationCheck(socket, next) {
-  const clientIP = socket.handshake.headers['x-forwarded-for']?.split(',')[0].trim() ||
-                   socket.handshake.address;
+  const clientIP = getClientIP(socket);
 
   const result = validateMindanaoAccess(clientIP);
 

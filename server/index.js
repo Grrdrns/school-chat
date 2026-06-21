@@ -6,6 +6,7 @@ const { socketLocationCheck, locationCheckMiddleware } = require('./locationChec
 
 const app = express();
 app.use(cors());
+app.use(express.json());
 app.use(locationCheckMiddleware);
 
 // Root route to show server is running
@@ -58,7 +59,9 @@ const io = new Server(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
-  }
+  },
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 // Apply location check middleware to socket connections
