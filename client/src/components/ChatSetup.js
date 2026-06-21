@@ -71,7 +71,10 @@ function ChatSetup({
   const [matchSimilar, setMatchSimilar] = useState(false);
   const [inputText, setInputText] = useState('');
   const [typingTimeout, setTypingTimeout] = useState(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(null);
+  const [replyingTo, setReplyingTo] = useState(null);
   const messagesEndRef = useRef(null);
+  const emojis = ['👍', '❤️', '😂', '😮', '😢', '🎉', '🔥', '👎'];
 
   // Reset course when college changes
   useEffect(() => {
@@ -174,8 +177,9 @@ function ChatSetup({
   const handleSend = (e) => {
     e.preventDefault();
     if (inputText.trim()) {
-      onSendMessage(inputText.trim());
+      onSendMessage(inputText.trim(), replyingTo);
       setInputText('');
+      setReplyingTo(null);
       onTyping(false);
       if (typingTimeout) {
         clearTimeout(typingTimeout);
@@ -204,6 +208,20 @@ function ChatSetup({
 
   const formatTime = (timestamp) => {
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const handleReply = (msg) => {
+    setReplyingTo(msg);
+    setInputText('');
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
+  };
+
+  const handleReaction = (msgIndex, emoji) => {
+    onAddReaction(msgIndex, emoji);
+    setShowEmojiPicker(null);
   };
 
   const showChatArea = status === 'waiting' || status === 'chatting' || status === 'ended' || status === 'disconnected';
@@ -244,7 +262,8 @@ function ChatSetup({
           borderRadius: '12px',
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          height: 'calc(100vh - 120px)'
         }}>
           {!showChatArea ? (
             // Placeholder when not chatting
@@ -263,55 +282,6 @@ function ChatSetup({
               <p style={{ color: '#999', fontSize: '0.85rem' }}>
                 Your identity is completely anonymous.
               </p>
-            </div>
-          ) : chatEnded ? (
-            // Chat ended - show ended state with Find New Match button
-            <div style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textAlign: 'center',
-              padding: '40px'
-            }}>
-              <div style={{
-                width: '80px',
-                height: '80px',
-                background: '#ffebee',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '24px',
-                fontSize: '40px'
-              }}>
-                👋
-              </div>
-              <h3 style={{ color: '#333', fontSize: '1.3rem', marginBottom: '12px' }}>
-                Chat Ended
-              </h3>
-              <p style={{ color: '#666', fontSize: '0.95rem', marginBottom: '8px' }}>
-                {partner ? `${partner.nickname} has left the conversation` : 'Your partner has left'}
-              </p>
-              <p style={{ color: '#999', fontSize: '0.85rem', marginBottom: '24px' }}>
-                You can find a new match to continue chatting
-              </p>
-              <button
-                onClick={onFindNewMatch}
-                style={{
-                  padding: '14px 32px',
-                  background: '#17a2b8',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                Find New Match
-              </button>
             </div>
           ) : status === 'waiting' ? (
             // Waiting for match
@@ -357,7 +327,11 @@ function ChatSetup({
             </div>
           ) : (
             // Active chat
-            <>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              height: '100%'
+            }}>
               {/* Disconnected Banner */}
               {isDisconnected && (
                 <div style={{
@@ -366,7 +340,8 @@ function ChatSetup({
                   padding: '12px 20px',
                   textAlign: 'center',
                   color: '#c62828',
-                  fontSize: '0.9rem'
+                  fontSize: '0.9rem',
+                  flexShrink: 0
                 }}>
                   Your partner has left the chat
                 </div>
@@ -378,51 +353,72 @@ function ChatSetup({
                 borderBottom: '1px solid #e0e0e0',
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center'
+                alignItems: 'center',
+                flexShrink: 0
               }}>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1rem', color: isDisconnected ? '#999' : '#333' }}>
-                    {isDisconnected 
-                      ? 'Partner disconnected' 
+                    {isDisconnected
+                      ? 'Partner disconnected'
                       : (partner ? `Chatting with ${partner.nickname}` : 'Finding a match...')
                     }
                   </h3>
                   <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: isDisconnected ? '#bbb' : '#666' }}>
-                    {isDisconnected 
+                    {isDisconnected
                       ? 'Start a new chat to find someone else'
                       : (partner ? `${partner.college} • ${partner.course}` : 'Please wait...')
                     }
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={onSkip}
-                    style={{
-                      padding: '8px 16px',
-                      background: '#17a2b8',
-                      color: 'white',
+                  {status === 'chatting' && partner && (
+                    <>
+                      <button
+                        onClick={onSkip}
+                        style={{
+                          padding: '8px 16px',
+                          background: '#17a2b8',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '0.85rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Next
+                      </button>
+                      <button
+                        onClick={onStop}
+                        style={{
+                          padding: '8px 16px',
+                          background: '#dc3545',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '0.85rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Stop
+                      </button>
+                    </>
+                  )}
+                  {status === 'ended' && (
+                    <button
+                      onClick={onFindNewMatch}
+                      style={{
+                        padding: '8px 16px',
+                        background: '#17a2b8',
+                        color: 'white',
                       border: 'none',
                       borderRadius: '6px',
                       fontSize: '0.85rem',
                       cursor: 'pointer'
                     }}
                   >
-                    Next
+                    Find New Match
                   </button>
-                  <button
-                    onClick={onStop}
-                    style={{
-                      padding: '8px 16px',
-                      background: '#dc3545',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '0.85rem',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Stop
-                  </button>
+                  )}
                 </div>
               </div>
 
@@ -433,7 +429,8 @@ function ChatSetup({
                 padding: '20px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '12px'
+                gap: '12px',
+                minHeight: 0
               }}>
                 {messages.length === 0 && !isDisconnected && (
                   <div style={{ textAlign: 'center', color: '#999', padding: '40px' }}>
@@ -451,15 +448,125 @@ function ChatSetup({
                       alignSelf: msg.isOwn ? 'flex-end' : 'flex-start',
                       background: msg.isOwn ? '#17a2b8' : '#f0f0f0',
                       color: msg.isOwn ? 'white' : '#333',
-                      wordWrap: 'break-word'
+                      wordWrap: 'break-word',
+                      cursor: !msg.isSystem ? 'pointer' : 'default',
+                      position: 'relative'
                     }}
+                    onClick={() => !msg.isSystem && handleReply(msg)}
+                    onMouseEnter={() => !msg.isSystem && setShowEmojiPicker(null)}
                   >
+                    {!msg.isSystem && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowEmojiPicker(showEmojiPicker === index ? null : index);
+                        }}
+                        style={{
+                          position: 'absolute',
+                          top: '-8px',
+                          right: msg.isOwn ? '-8px' : 'auto',
+                          left: msg.isOwn ? 'auto' : '-8px',
+                          background: '#fff',
+                          border: '1px solid #ddd',
+                          borderRadius: '50%',
+                          width: '24px',
+                          height: '24px',
+                          fontSize: '14px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                          opacity: 0,
+                          transition: 'opacity 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.target.style.opacity = '1'}
+                        onMouseLeave={(e) => {
+                          if (showEmojiPicker !== index) {
+                            e.target.style.opacity = '0';
+                          }
+                        }}
+                      >
+                        😊
+                      </button>
+                    )}
+                    {showEmojiPicker === index && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          right: msg.isOwn ? 0 : 'auto',
+                          left: msg.isOwn ? 'auto' : 0,
+                          marginTop: '8px',
+                          background: 'white',
+                          border: '1px solid #ddd',
+                          borderRadius: '8px',
+                          padding: '8px',
+                          display: 'flex',
+                          gap: '8px',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                          zIndex: 100
+                        }}
+                      >
+                        {emojis.map((emoji) => (
+                          <button
+                            key={emoji}
+                            onClick={() => handleReaction(index, emoji)}
+                            style={{
+                              fontSize: '20px',
+                              padding: '4px 8px',
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              borderRadius: '4px',
+                              transition: 'background 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.target.style.background = '#f0f0f0'}
+                            onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {msg.replyTo && (
+                      <div style={{
+                        fontSize: '0.75rem',
+                        color: msg.isOwn ? 'rgba(255,255,255,0.7)' : '#666',
+                        marginBottom: '6px',
+                        paddingBottom: '6px',
+                        borderBottom: `1px solid ${msg.isOwn ? 'rgba(255,255,255,0.3)' : '#ddd'}`,
+                        fontStyle: 'italic'
+                      }}>
+                        ↳ Replying to {msg.replyTo.sender}: {msg.replyTo.text.slice(0, 30)}{msg.replyTo.text.length > 30 ? '...' : ''}
+                      </div>
+                    )}
                     {!msg.isSystem && !msg.isOwn && (
                       <div style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px', opacity: 0.8 }}>
                         {msg.sender}
                       </div>
                     )}
                     <div>{msg.text}</div>
+                    {msg.reactions && msg.reactions.length > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        gap: '4px',
+                        marginTop: '6px',
+                        flexWrap: 'wrap'
+                      }}>
+                        {msg.reactions.map((reaction, rIndex) => (
+                          <span key={rIndex} style={{
+                            fontSize: '14px',
+                            background: msg.isOwn ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)',
+                            padding: '2px 6px',
+                            borderRadius: '12px'
+                          }}>
+                            {reaction.emoji} {reaction.count}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <div style={{
                       fontSize: '0.7rem',
                       marginTop: '4px',
@@ -490,46 +597,94 @@ function ChatSetup({
                 <div ref={messagesEndRef} />
               </div>
 
+              {/* Centered message when chat ended */}
+              {status === 'ended' && (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '20px',
+                  borderTop: '1px solid #e0e0e0',
+                  background: '#f9f9f9',
+                  flexShrink: 0
+                }}>
+                  <p style={{ margin: 0, color: '#666', fontSize: '0.9rem' }}>
+                    Your partner has left the conversation
+                  </p>
+                </div>
+              )}
+
               {/* Input Area - only show when actually chatting */}
-              {canChat && (
+              {canChat && status !== 'ended' && (
                 <form onSubmit={handleSend} style={{
-                  padding: '16px 20px',
+                  padding: '12px 20px',
                   borderTop: '1px solid #e0e0e0',
                   display: 'flex',
-                  gap: '12px'
+                  flexDirection: 'column',
+                  gap: '8px',
+                  flexShrink: 0
                 }}>
-                  <input
-                    type="text"
-                    placeholder={isDisconnected ? "Partner disconnected..." : "Type a message..."}
-                    value={inputText}
-                    onChange={handleInputChange}
-                    disabled={isDisconnected}
-                    style={{
-                      flex: 1,
-                      padding: '12px 16px',
-                      border: '1px solid #ddd',
-                      borderRadius: '8px',
-                      fontSize: '0.95rem'
-                    }}
-                  />
-                  <button
-                    type="submit"
-                    disabled={!inputText.trim() || isDisconnected}
-                    style={{
-                      padding: '12px 24px',
-                      background: (!inputText.trim() || isDisconnected) ? '#ccc' : '#17a2b8',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontWeight: 600,
-                      cursor: (!inputText.trim() || isDisconnected) ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    Send
-                  </button>
+                  {replyingTo && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 12px',
+                      background: '#f0f0f0',
+                      borderRadius: '6px',
+                      fontSize: '0.85rem'
+                    }}>
+                      <span style={{ color: '#666', fontStyle: 'italic' }}>
+                        ↳ Replying to {replyingTo.sender}: {replyingTo.text.slice(0, 40)}{replyingTo.text.length > 40 ? '...' : ''}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleCancelReply}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#999',
+                          cursor: 'pointer',
+                          fontSize: '16px',
+                          padding: '0 4px'
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <input
+                      type="text"
+                      placeholder={isDisconnected ? "Partner disconnected..." : "Type a message..."}
+                      value={inputText}
+                      onChange={handleInputChange}
+                      disabled={isDisconnected}
+                      style={{
+                        flex: 1,
+                        padding: '12px 16px',
+                        border: '1px solid #ddd',
+                        borderRadius: '8px',
+                        fontSize: '0.95rem'
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      disabled={!inputText.trim() || isDisconnected}
+                      style={{
+                        padding: '12px 24px',
+                        background: (!inputText.trim() || isDisconnected) ? '#ccc' : '#17a2b8',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontWeight: 600,
+                        cursor: (!inputText.trim() || isDisconnected) ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      Send
+                    </button>
+                  </div>
                 </form>
               )}
-            </>
+            </div>
           )}
         </div>
 

@@ -273,7 +273,8 @@ io.on('connection', (socket) => {
       socket.to(chat.roomId).emit('message', {
         text: data.text,
         sender: user.nickname,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        replyTo: data.replyTo
       });
     }
   });
@@ -285,10 +286,34 @@ io.on('connection', (socket) => {
       socket.to(chat.roomId).emit('typing', isTyping);
     }
   });
+
+  // Handle presence/seen status
+  socket.on('presence', (isPresent) => {
+    const chat = activeChats.get(socket.id);
+    if (chat) {
+      const user = userSockets.get(socket.id);
+      socket.to(chat.roomId).emit('presence', {
+        userId: socket.id,
+        isPresent: isPresent,
+        nickname: user.nickname
+      });
+    }
+  });
+
+  // Handle emoji reactions
+  socket.on('reaction', (data) => {
+    const chat = activeChats.get(socket.id);
+    if (chat) {
+      socket.to(chat.roomId).emit('reaction', {
+        msgIndex: data.msgIndex,
+        emoji: data.emoji
+      });
+    }
+  });
   
   // Skip/Next partner
   socket.on('skip', () => {
-    handleDisconnect(socket);
+    handleDisconnect(socket, true);
     socket.emit('skipped');
   });
   
@@ -370,32 +395,38 @@ io.on('connection', (socket) => {
   });
 });
 
-function handleDisconnect(socket) {
+function handleDisconnect(socket, initiatedByUser = false) {
   // Remove from waiting pool if present
   const waitingIndex = waitingUsers.findIndex(u => u.id === socket.id);
   if (waitingIndex !== -1) {
     waitingUsers.splice(waitingIndex, 1);
   }
-  
+
   // Handle active chat
   const chat = activeChats.get(socket.id);
   if (chat) {
     const partnerId = chat.user1.id === socket.id ? chat.user2.id : chat.user1.id;
     const partner = userSockets.get(partnerId);
-    
+
     if (partner) {
-      // Notify partner that chat ended - DON'T auto-queue them
-      partner.socket.emit('chatEnded', { 
+      // Keep messages for both users - don't clear conversation
+      socket.emit('chatEnded', {
+        reason: initiatedByUser ? 'user_ended' : 'partner_left',
+        message: initiatedByUser ? 'You ended the conversation' : 'Your partner has left the conversation',
+        clearMessages: false
+      });
+      partner.socket.emit('chatEnded', {
         reason: 'partner_left',
-        message: 'Your partner has left the conversation'
+        message: 'Your partner has left the conversation',
+        clearMessages: false
       });
       partner.socket.leave(chat.roomId);
-      
+
       // Remove partner's chat record
       activeChats.delete(partnerId);
       // Partner stays in 'chatEnded' state until they click "Find New Match"
     }
-    
+
     socket.leave(chat.roomId);
     activeChats.delete(socket.id);
   }

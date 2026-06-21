@@ -6,17 +6,23 @@ function MobileChat({
   messages,
   isTyping,
   isDisconnected,
+  partnerPresence,
   onSendMessage,
   onTyping,
   onSkip,
   onStop,
   onFindNewMatch,
   onBackToSetup,
-  onCancelSearch
+  onCancelSearch,
+  onAddReaction
 }) {
   const [inputText, setInputText] = useState('');
   const [typingTimeout, setTypingTimeout] = useState(null);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(null);
   const messagesEndRef = useRef(null);
+
+  const emojis = ['👍', '❤️', '😂', '😮', '😢', '🎉', '🔥', '👎'];
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -26,13 +32,31 @@ function MobileChat({
   const handleSend = (e) => {
     e.preventDefault();
     if (inputText.trim()) {
-      onSendMessage(inputText.trim());
+      if (replyingTo) {
+        onSendMessage(inputText.trim(), replyingTo);
+        setReplyingTo(null);
+      } else {
+        onSendMessage(inputText.trim());
+      }
       setInputText('');
       onTyping(false);
       if (typingTimeout) {
         clearTimeout(typingTimeout);
       }
     }
+  };
+
+  const handleReply = (msg) => {
+    setReplyingTo(msg);
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
+  };
+
+  const handleReaction = (msgIndex, emoji) => {
+    onAddReaction(msgIndex, emoji);
+    setShowEmojiPicker(null);
   };
 
   const handleInputChange = (e) => {
@@ -185,13 +209,21 @@ function MobileChat({
         color: 'white',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        position: 'sticky',
+        top: 0,
+        zIndex: 10
       }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600 }}>BukChat</h1>
           <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', opacity: 0.9 }}>
             {partner ? `${partner.nickname} • ${partner.college}` : 'Chatting...'}
           </p>
+          {partner && !isDisconnected && (
+            <p style={{ margin: '2px 0 0 0', fontSize: '0.7rem', opacity: 0.8 }}>
+              {partnerPresence ? '● Online' : '○ Away'}
+            </p>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
@@ -252,15 +284,120 @@ function MobileChat({
               background: msg.isOwn ? '#17a2b8' : '#f0f0f0',
               color: msg.isOwn ? 'white' : '#333',
               wordWrap: 'break-word',
-              fontSize: '0.95rem'
+              fontSize: '0.95rem',
+              cursor: !msg.isSystem ? 'pointer' : 'default',
+              position: 'relative'
+            }}
+            onClick={() => !msg.isSystem && handleReply(msg)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              if (!msg.isSystem) {
+                setShowEmojiPicker(showEmojiPicker === index ? null : index);
+              }
             }}
           >
+            {!msg.isSystem && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowEmojiPicker(showEmojiPicker === index ? null : index);
+                }}
+                style={{
+                  position: 'absolute',
+                  top: '-6px',
+                  right: msg.isOwn ? '-6px' : 'auto',
+                  left: msg.isOwn ? 'auto' : '-6px',
+                  background: '#fff',
+                  border: '1px solid #ddd',
+                  borderRadius: '50%',
+                  width: '18px',
+                  height: '18px',
+                  fontSize: '10px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  opacity: 0.7
+                }}
+              >
+                😊
+              </button>
+            )}
+            {showEmojiPicker === index && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: msg.isOwn ? 0 : 'auto',
+                  left: msg.isOwn ? 'auto' : 0,
+                  marginTop: '6px',
+                  background: 'white',
+                  border: '1px solid #ddd',
+                  borderRadius: '8px',
+                  padding: '6px',
+                  display: 'flex',
+                  gap: '6px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  zIndex: 100
+                }}
+              >
+                {emojis.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => handleReaction(index, emoji)}
+                    style={{
+                      fontSize: '18px',
+                      padding: '3px 6px',
+                      border: 'none',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      borderRadius: '4px'
+                    }}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            )}
+            {msg.replyTo && (
+              <div style={{
+                fontSize: '0.7rem',
+                color: msg.isOwn ? 'rgba(255,255,255,0.7)' : '#666',
+                marginBottom: '4px',
+                paddingBottom: '4px',
+                borderBottom: `1px solid ${msg.isOwn ? 'rgba(255,255,255,0.3)' : '#ddd'}`,
+                fontStyle: 'italic'
+              }}>
+                ↳ Replying to {msg.replyTo.sender}: {msg.replyTo.text.slice(0, 25)}{msg.replyTo.text.length > 25 ? '...' : ''}
+              </div>
+            )}
             {!msg.isSystem && !msg.isOwn && (
               <div style={{ fontSize: '0.7rem', fontWeight: 600, marginBottom: '3px', opacity: 0.8 }}>
                 {msg.sender}
               </div>
             )}
             <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
+            {msg.reactions && msg.reactions.length > 0 && (
+              <div style={{
+                display: 'flex',
+                gap: '3px',
+                marginTop: '4px',
+                flexWrap: 'wrap'
+              }}>
+                {msg.reactions.map((reaction, rIndex) => (
+                  <span key={rIndex} style={{
+                    fontSize: '12px',
+                    background: msg.isOwn ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)',
+                    padding: '2px 5px',
+                    borderRadius: '10px'
+                  }}>
+                    {reaction.emoji} {reaction.count}
+                  </span>
+                ))}
+              </div>
+            )}
             <div style={{
               fontSize: '0.65rem',
               marginTop: '3px',
@@ -296,40 +433,73 @@ function MobileChat({
         padding: '12px 16px',
         borderTop: '1px solid #e0e0e0',
         display: 'flex',
-        gap: '10px',
+        flexDirection: 'column',
+        gap: '8px',
         background: '#f5f5f5'
       }}>
-        <input
-          type="text"
-          placeholder={isDisconnected ? "Partner disconnected..." : "Type a message..."}
-          value={inputText}
-          onChange={handleInputChange}
-          disabled={isDisconnected}
-          style={{
-            flex: 1,
-            padding: '12px 16px',
-            border: '1px solid #ddd',
-            borderRadius: '20px',
-            fontSize: '16px',
-            background: isDisconnected ? '#f5f5f5' : 'white'
-          }}
-        />
-        <button
-          type="submit"
-          disabled={!inputText.trim() || isDisconnected}
-          style={{
-            padding: '12px 20px',
-            background: (!inputText.trim() || isDisconnected) ? '#ccc' : '#17a2b8',
-            color: 'white',
-            border: 'none',
-            borderRadius: '20px',
-            fontWeight: 600,
-            fontSize: '0.9rem',
-            cursor: (!inputText.trim() || isDisconnected) ? 'not-allowed' : 'pointer'
-          }}
-        >
-          Send
-        </button>
+        {replyingTo && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 12px',
+            background: '#e0e0e0',
+            borderRadius: '8px',
+            fontSize: '0.85rem'
+          }}>
+            <span style={{ color: '#666' }}>↳ Replying to:</span>
+            <span style={{ color: '#333', fontStyle: 'italic' }}>
+              {replyingTo.text.slice(0, 40)}{replyingTo.text.length > 40 ? '...' : ''}
+            </span>
+            <button
+              type="button"
+              onClick={handleCancelReply}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#999',
+                cursor: 'pointer',
+                fontSize: '16px',
+                padding: '0 4px'
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <input
+            type="text"
+            placeholder={isDisconnected ? "Partner disconnected..." : "Type a message..."}
+            value={inputText}
+            onChange={handleInputChange}
+            disabled={isDisconnected}
+            style={{
+              flex: 1,
+              padding: '12px 16px',
+              border: '1px solid #ddd',
+              borderRadius: '20px',
+              fontSize: '16px',
+              background: isDisconnected ? '#f5f5f5' : 'white'
+            }}
+          />
+          <button
+            type="submit"
+            disabled={!inputText.trim() || isDisconnected}
+            style={{
+              padding: '12px 20px',
+              background: (!inputText.trim() || isDisconnected) ? '#ccc' : '#17a2b8',
+              color: 'white',
+              border: 'none',
+              borderRadius: '20px',
+              fontWeight: 600,
+              fontSize: '0.9rem',
+              cursor: (!inputText.trim() || isDisconnected) ? 'not-allowed' : 'pointer'
+            }}
+          >
+            Send
+          </button>
+        </div>
       </form>
     </div>
   );

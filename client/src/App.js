@@ -21,6 +21,7 @@ function App() {
   const [isTyping, setIsTyping] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 900);
   const [connectionError, setConnectionError] = useState(null);
+  const [partnerPresence, setPartnerPresence] = useState(false);
   const userDataRef = useRef(null);
   const statusRef = useRef('landing');
 
@@ -124,6 +125,18 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Track page visibility for presence
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (socket && status === 'chatting') {
+        socket.emit('presence', !document.hidden);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [socket, status]);
+
   // Initialize socket connection
   useEffect(() => {
     const newSocket = io(SERVER_URL, {
@@ -204,7 +217,8 @@ function App() {
         text: data.text,
         sender: data.sender,
         isOwn: false,
-        timestamp: data.timestamp
+        timestamp: data.timestamp,
+        replyTo: data.replyTo
       }]);
       setIsTyping(false);
     });
@@ -213,14 +227,42 @@ function App() {
       setIsTyping(typing);
     });
 
+    newSocket.on('presence', (data) => {
+      setPartnerPresence(data.isPresent);
+    });
+
+    newSocket.on('reaction', (data) => {
+      setMessages(prev => {
+        const updated = [...prev];
+        if (updated[data.msgIndex]) {
+          if (!updated[data.msgIndex].reactions) {
+            updated[data.msgIndex].reactions = [];
+          }
+          const existingReaction = updated[data.msgIndex].reactions.find(r => r.emoji === data.emoji);
+          if (existingReaction) {
+            existingReaction.count++;
+          } else {
+            updated[data.msgIndex].reactions.push({ emoji: data.emoji, count: 1 });
+          }
+        }
+        return updated;
+      });
+    });
+
     newSocket.on('chatEnded', (data) => {
       setStatus('ended'); // Chat ended - show "Find New Match" button
-      setMessages(prev => [...prev, {
-        text: data.message || 'Your partner has left the conversation.',
-        sender: 'System',
-        isSystem: true,
-        timestamp: Date.now()
-      }]);
+      if (data.clearMessages) {
+        // User initiated the end - clear their messages
+        setMessages([]);
+      } else {
+        // Partner left - keep messages and add system message
+        setMessages(prev => [...prev, {
+          text: data.message || 'Your partner has left the conversation.',
+          sender: 'System',
+          isSystem: true,
+          timestamp: Date.now()
+        }]);
+      }
       // Don't clear partner - keep it to show who left
     });
 
@@ -265,15 +307,22 @@ function App() {
     }
   };
 
-  const handleSendMessage = (text) => {
+  const handleSendMessage = (text, replyTo = null) => {
     if (socket && text.trim()) {
-      socket.emit('message', { text });
+      socket.emit('message', { text, replyTo });
       setMessages(prev => [...prev, {
         text,
         sender: userData?.nickname || 'You',
         isOwn: true,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        replyTo: replyTo ? { text: replyTo.text, sender: replyTo.sender } : null
       }]);
+    }
+  };
+
+  const handleAddReaction = (msgIndex, emoji) => {
+    if (socket) {
+      socket.emit('reaction', { msgIndex, emoji });
     }
   };
 
@@ -328,10 +377,16 @@ function App() {
   const handleCancelSearch = () => {
     if (socket) {
       socket.emit('skip');
+      socket.once('skipped', () => {
+        setStatus('setup');
+        setPartner(null);
+        setMessages([]);
+      });
+    } else {
+      setStatus('setup');
+      setPartner(null);
+      setMessages([]);
     }
-    setStatus('setup');
-    setPartner(null);
-    setMessages([]);
   };
 
   return (
@@ -378,21 +433,22 @@ function App() {
       )}
       
       {!connectionError && isMobile && status === 'setup' && (
-        <MobileSetup 
+        <MobileSetup
           onLogin={handleLogin}
           status={status}
           userData={userData}
           onCancelSearch={handleCancelSearch}
         />
       )}
-      
+
       {!connectionError && isMobile && (status === 'waiting' || status === 'chatting' || status === 'ended' || status === 'disconnected') && (
-        <MobileChat 
+        <MobileChat
           status={status}
           partner={partner}
           messages={messages}
           isTyping={isTyping}
           isDisconnected={status === 'ended' || status === 'disconnected'}
+          partnerPresence={partnerPresence}
           onSendMessage={handleSendMessage}
           onTyping={handleTyping}
           onSkip={handleSkip}
@@ -400,11 +456,12 @@ function App() {
           onFindNewMatch={handleFindNewMatch}
           onBackToSetup={() => setStatus('setup')}
           onCancelSearch={handleCancelSearch}
+          onAddReaction={handleAddReaction}
         />
       )}
       
       {!connectionError && !isMobile && status === 'setup' && (
-        <ChatSetup 
+        <ChatSetup
           onLogin={handleLogin}
           status={status}
           userData={userData}
@@ -412,16 +469,18 @@ function App() {
           messages={messages}
           isTyping={isTyping}
           isDisconnected={status === 'disconnected'}
+          partnerPresence={partnerPresence}
           onSendMessage={handleSendMessage}
           onTyping={handleTyping}
           onSkip={handleSkip}
           onStop={handleStop}
           onCancelSearch={handleCancelSearch}
+          onAddReaction={handleAddReaction}
         />
       )}
-      
+
       {!connectionError && !isMobile && (status === 'waiting' || status === 'chatting' || status === 'ended' || status === 'disconnected') && (
-        <ChatSetup 
+        <ChatSetup
           onLogin={handleLogin}
           status={status}
           userData={userData}
@@ -429,12 +488,14 @@ function App() {
           messages={messages}
           isTyping={isTyping}
           isDisconnected={status === 'ended' || status === 'disconnected'}
+          partnerPresence={partnerPresence}
           onSendMessage={handleSendMessage}
           onTyping={handleTyping}
           onSkip={handleSkip}
           onStop={handleStop}
           onFindNewMatch={handleFindNewMatch}
           onCancelSearch={handleCancelSearch}
+          onAddReaction={handleAddReaction}
         />
       )}
     </div>
